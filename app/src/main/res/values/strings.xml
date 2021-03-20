@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Chatter1</string>
+    <string name="title_activity_nickname">NicknameActivity</string>
+    <string name="nickname_line1">Let\'s create your nick name</string>
+    <string name="nickname_line2">(Max 12 characters with alphabets and numbers))</string>
+</resources>
