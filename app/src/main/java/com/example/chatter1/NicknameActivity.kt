@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.EditText
 import android.widget.TextView
 import androidx.core.text.trimmedLength
+import androidx.preference.PreferenceManager
 
 const val NICKNAME_MAX_SIZE = 12
 
@@ -24,6 +25,43 @@ class NicknameActivity : AppCompatActivity() {
 
         m_textError     = findViewById(R.id.textViewError)
         m_editNickname  = findViewById(R.id.editNickname)
+
+        //..... Check if this is to create a new Nickname or change an existing one
+        //xxxxx 2021/03/20: intent.getStringExtra returns null and I cannot get to wotk.
+        //      bundle and sNickname both get null
+        val intent = Intent()
+        val bundle = intent.extras
+        var sNickname = intent.getStringExtra (NICKNAME_KEY).toString()
+        //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        //..... So, this my stop-gap solution for now.
+        sNickname = getNicknameFromDevice ()
+        if (sNickname == "null" || sNickname.isNullOrEmpty()) {
+            sNickname = ""
+        }
+        //..... Set the initial value for m_editNickname
+        m_editNickname.setText(sNickname)
+
+    }
+
+    //..... 2021/03/20: Copied from MainActivity to go aroung the issue mentioned above.
+    //      But it should be removed when the issue is resolved
+    fun getNicknameFromDevice () : String {
+
+        lateinit var sNickname : String
+
+        //..... Get the Nickname from SharedPreference
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //      NOTE: The following statement resulted in deprecated indication initially.
+        //      To alleviate this issue, take the following steps
+        //      (1) In build.gradle (:app), add the following statement
+        //          implementation 'androidx.preference:preference-ktx:1.1.1'
+        //      (2) Change the import statement at the start of this source program from android.... to androidx....
+        //          import androidx.preference.PreferenceManager
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        PreferenceManager.getDefaultSharedPreferences(this).apply {
+            sNickname = getString (NICKNAME_KEY, "").toString()
+        }
+        return sNickname
     }
 
     fun onClickButtonOK (view : View) {

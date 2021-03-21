@@ -3,6 +3,8 @@ package com.example.chatter1
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import androidx.preference.PreferenceManager
 
 const val NICKNAME_KEY = "Nickname"
@@ -28,6 +30,26 @@ class MainActivity : AppCompatActivity() {
         }
 
 
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+
+        when (item.itemId) {
+            R.id.menu_edit_nickname -> {
+                //Start NicknameActivity to change the nickname
+                val intent = Intent(this, NicknameActivity::class.java)
+                intent.putExtra (NICKNAME_KEY, m_sNickname.toString())
+                startActivityForResult(intent, NICKNAME_REQUEST_CODE)
+            }
+        }
+
+        return super.onOptionsItemSelected(item)
     }
 
     fun getNicknameFromDevice () : String {
@@ -77,12 +99,8 @@ class MainActivity : AppCompatActivity() {
 
     fun addNicknameToTitleBar () {
 
-        val actionBar = supportActionBar
-        var sTitle = actionBar?.title.toString()
-        if (sTitle.isNullOrEmpty()) {
-            sTitle = "Chatter1"
-        }
-        sTitle = sTitle + " " + m_sNickname
+        val sTitle = "Chatter " + m_sNickname
         setTitle(sTitle)
     }
+
 }
