@@ -1,6 +1,12 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
+    //..... 2021/03/27: The following statement resolves the syntax errors in SessionViewHolder
+    //                  Although I get a deprecated warning error, at least it builds the app.
+    id 'kotlin-android-extensions'
+    //..... 2021/03/27: the following plugin will result in unreferenced name errors in SessionViewHolder
+    //id 'kotlin-parcelize'
+
 }
 
 android {
@@ -44,4 +50,9 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 
     implementation 'androidx.preference:preference-ktx:1.1.1'
+
+    implementation 'com.android.volley:volley:1.2.0'
+
+    //..... 2021/03/27: Added the following statement hoping to remove the errors in SessionViewHolder class but it did not.
+    implementation 'androidx.recyclerview:recyclerview:1.1.0'
 }

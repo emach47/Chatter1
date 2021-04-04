@@ -1,11 +1,11 @@
 package com.example.chatter1
 
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.text.trimmedLength
 import androidx.preference.PreferenceManager
 
@@ -29,13 +29,13 @@ class NicknameActivity : AppCompatActivity() {
         //..... Check if this is to create a new Nickname or change an existing one
         //xxxxx 2021/03/20: intent.getStringExtra returns null and I cannot get to wotk.
         //      bundle and sNickname both get null
-        val intent = Intent()
-        val bundle = intent.extras
-        var sNickname = intent.getStringExtra (NICKNAME_KEY).toString()
+        //val intent = Intent()
+        //val bundle = intent.extras
+        //var sNickname = intent.getStringExtra (NICKNAME_KEY).toString()
         //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         //..... So, this my stop-gap solution for now.
-        sNickname = getNicknameFromDevice ()
-        if (sNickname == "null" || sNickname.isNullOrEmpty()) {
+        var sNickname = getNicknameFromDevice ()
+        if (sNickname == "null" || sNickname.isEmpty()) {
             sNickname = ""
         }
         //..... Set the initial value for m_editNickname
@@ -89,8 +89,18 @@ class NicknameActivity : AppCompatActivity() {
         //..... Return the Nickname to the Activity that called me
         val intent = Intent()
         intent.putExtra (NICKNAME_KEY, sNickname.toString())
-        setResult (NICKNAME_REQUEST_CODE, intent)
+        setResult (REQUEST_CODE_GET_NICKNAME, intent)
         finish ()
+
+    }
+
+    fun showAllSessions () {
+
+        //..... Get the Internet bulletin board info
+        getSessionInfo ()
+    }
+
+    fun getSessionInfo () {
 
     }
 }
