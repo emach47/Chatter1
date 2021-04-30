@@ -15,6 +15,7 @@ package com.example.chatter1
 class NetLogin {
 
     //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Testing Branch commit @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    val iTest = 9
 
 //    val netViewModel = NetViewModel()
 //    lateinit var m_sSessionID: String
