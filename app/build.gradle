@@ -3,11 +3,24 @@ plugins {
     id 'kotlin-android'
     //..... 2021/03/27: The following statement resolves the syntax errors in SessionViewHolder
     //                  Although I get a deprecated warning error, at least it builds the app.
+    //..... 2021/04/22: I tried to eliminate the deprecated warning message with a different syntax as shown below without plugins { ... }
+    //                  but did not eliminate the warning message.
+    //                  Also Chatter00 and Gassner's example (Branch 03_03e) did not cause the warning message.
     id 'kotlin-android-extensions'
     //..... 2021/03/27: the following plugin will result in unreferenced name errors in SessionViewHolder
     //id 'kotlin-parcelize'
 
+// ... The following 2 statements added for Realm per Book's section 11.5 p519
+//    apply plugin: 'kotlin-kapt'
+//    apply plugin: 'realm-android'
+    id 'kotlin-kapt'
+    id 'realm-android'
 }
+
+//..... 2021/04/22: The following statements did not eliminate the deprecated warning generated with the above plugin for kotlin-android-extensions
+//apply plugin: 'com.android.application'
+//apply plugin: 'kotlin-android'
+//apply plugin: 'kotlin-android-extensions'
 
 android {
     compileSdkVersion 30
@@ -54,5 +67,15 @@ dependencies {
     implementation 'com.android.volley:volley:1.2.0'
 
     //..... 2021/03/27: Added the following statement hoping to remove the errors in SessionViewHolder class but it did not.
-    implementation 'androidx.recyclerview:recyclerview:1.1.0'
+    implementation 'androidx.recyclerview:recyclerview:1.2.0'
+
+    //..... 2020/01/09: Added to use Coroutines
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.1"
+    //..... 2021/02/25: ViewModel added
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.3.1"
+
+    //..... 2020/11/17: Added the following statement for Realm per Book's p522
+    implementation 'io.realm:android-adapters:3.0.0'
+
 }

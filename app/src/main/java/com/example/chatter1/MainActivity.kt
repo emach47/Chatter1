@@ -5,7 +5,9 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.preference.PreferenceManager
+import io.realm.Realm
 
 const val NICKNAME_KEY = "Nickname"
 //!!!!! 2021/03/28: TODO: Returning from NicknameActivity has a problem.
@@ -26,16 +28,18 @@ const val HTTP_REQUEST_REMOVE_GUEST           = 5
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var realm: Realm
+
     //..... Define Session ID
     val m_sSessionID = "RumNet"
 
     //..... Properties for NicknameActivity
-    lateinit var m_sNickname : String
+    var m_sNickname =""
 
     //=============================================================================================
     //  Properties for NetLogin
     //=============================================================================================
-    lateinit var netLogin : NetLogin
+//    val netLogin = NetLogin()
     //..... returned HTTP Buffer
     lateinit var m_sHttpBuffer : String
     var m_iHttpRequestCode = HTTP_REQUEST_SESSION_INFORMARION
@@ -47,27 +51,63 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        realm = Realm.getDefaultInstance()
+
         //..... Instantiate NetLogin
-        netLogin = NetLogin()
-        netLogin.initNetLogin (m_sSessionID)
+//        netLogin = NetLogin()
+//        netLogin.initNetLogin (m_sSessionID)
+        //..... Build Session Table first before starting NicknameActivity
+        netViewModel = ViewModelProvider(this).get(NetViewModel::class.java)
+        //buildSessionTable(m_sSessionID)
+        netViewModel.buildSessionTable(this, m_sSessionID)
+        //..... The following statement did not get a syntax error even though getHttpData() does not return anything
+        //val sHttpBuffer = netViewModel.getHttpData()
+        //netViewModel.getHttpSessionData(m_sSessionID)
+
+
+        val iSessions = netViewModel.m_iSessions
 
         /**************************************************************************************
          *      Get Nickname
          **************************************************************************************/
-        //..... Get m_sNickname from the device
-        m_sNickname = getNicknameFromDevice()
-        //..... If the Nickname does not exist yet, we must ask the user to create one
-        if (m_sNickname.isEmpty()) {
-            val intent = Intent(this, NicknameActivity::class.java)
-            startActivityForResult(intent, REQUEST_CODE_GET_NICKNAME)
-            //..... Wait until NicknameActivity finishes before starting the next step
-            //      That is, the next step is called from onActivityResult(
-            return
-        }
+//        //..... Get m_sNickname from the device
+//        m_sNickname = getNicknameFromDevice()
+//        //..... If the Nickname does not exist yet, we must ask the user to create one
+//        //..... For Debugging Only
+//        m_sNickname = ""
+//        if (m_sNickname.isEmpty()) {
+//            val intent = Intent(this, NicknameActivity::class.java)
+//            startActivityForResult(intent, REQUEST_CODE_GET_NICKNAME)
+//            //..... Wait until NicknameActivity finishes before starting the next step
+//            //      That is, the next step is called from onActivityResult(
+//            return
+//        }
+//
+//        //..... We have the Nickname; Start the next process
+//        processAfterNickname()
 
-        //..... We have the Nickname; Start the next process
-        processAfterNickname()
+        //..... Start SessionActivity to get or confirm the Nickname
+        //      And to give time for buildSessionTable
+        val intent = Intent(this, NicknameActivity::class.java)
+        startActivityForResult(intent, REQUEST_CODE_GET_NICKNAME)
    }
+
+//    fun buildSessionTable (sSessionID: String) {
+//
+//        //..... getSessionInfo
+//        //netLogin.getSessionInfo(this, sSessionID)
+//        netViewModel.buildSessionTable(this, sSessionID)
+//
+//        //..... For debugging
+////        var iDuration = 0
+////        var iStatus = 0
+////        while (netViewModel.m_iSessionTableStatus == SESSION_TABLE_STARTED) {
+////            sleep (100)
+////            iDuration = iDuration + 100
+////        }
+////        iStatus = netViewModel.m_iSessionTableStatus
+//
+//    }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -90,6 +130,8 @@ class MainActivity : AppCompatActivity() {
             //..... Write this information to the device memory
             savePreferenceData(m_sNickname)
 
+            val iSessions = netViewModel.m_iSessions
+
             //..... Now start the next process
             processAfterNickname()
             return
@@ -107,14 +149,15 @@ class MainActivity : AppCompatActivity() {
         //..... Set the Nickname in the Title Bar
         addNicknameToTitleBar()
 
-        /**************************************************************************************
-         *      Get Chatter session info from Internet
-         **************************************************************************************/
-        val netLogin = NetLogin()
-        netLogin.getSessionInfo2(this, m_sSessionID)
+        //..... 2021/04/11: Moved to the first step in onCreate()
+//        //..... Get Chatter session info from Internet
+//        val netLogin = NetLogin()
+//        netLogin.getSessionInfo(this, m_sSessionID)
+//        //????? How to synchronize the complettion of getSessionIngo & next stap ?????
 
-
+        //..... Start SessionActivity to get if the user wants to Start or Join a Chatter session
         val intent = Intent(this, SessionActivity::class.java)
+        intent.putExtra(HTTP_BUFFER, netViewModel.m_sHttpBuffer)
         startActivityForResult(intent, REQUEST_CODE_GET_SESSION_INFORMATION)
         return
 
@@ -192,49 +235,6 @@ class MainActivity : AppCompatActivity() {
         }
         return super.onOptionsItemSelected(item)
     }
-//
-//    fun requestSessionInformation () {
-//
-//        //..... Reuest the data showing all sessions in progress
-//        //      Note: the result will be processed by ?????
-//        m_iHttpRequestCode = HTTP_REQUEST_SESSION_INFORMARION
-//        netViewModel.getHttpData(m_iHttpRequestCode)
-//        //..... Upon completion processHttpData() will be called
-//    }
-//
-//    fun processHttpData () {
-//
-//        netLogin.processHttpData(m_iHttpRequestCode, m_sHttpBuffer)
-//
-//    }
-//
-//    fun internetGetData(sGameID: String) {
-//
-//        // Instantiate the RequestQueue.
-//        //val myContext = getApplicationContext()
-//        val queue = Volley.newRequestQueue(this)
-//        var sURL = "http://www.machida.com/cgi-bin/show2.pl?Game="
-//        sURL = sURL + sGameID
-//        //var sData = ""
-//        //val textData = findViewById<TextView>(R.id.textData)
-//
-//        // Request a string response from the provided URL.
-//        val stringRequest = StringRequest(
-//            //..... The following statement chaged to remove syntax error per stack overflow
-//            //      https://stackoverflow.com/questions/32228877/cannot-resolve-symbol-method
-//            //DownloadManager.Request.Method.GET, sURL,
-//            Request.Method.GET, sURL,
-//            Response.Listener<String> { response ->
-//                // Display the first 500 characters of the response string.
-//                //textData.text = "Method 1: " + "${response}"
-//                val sData = "${response}"
-//                //copyToTextView(sData)
-//            },
-//            Response.ErrorListener { sURL = sURL + "<-- didn't work!" })
-//
-//        // Add the request to the RequestQueue.
-//        queue.add(stringRequest)
-//    }
 
     /**************************************************************************************
      *      Process after SessionActivity

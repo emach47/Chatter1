@@ -14,13 +14,17 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
     //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
     //..... Link to NetViewModel
-    val netViewModel = NetViewModel()
+    //val netViewModel : NetViewModel by netViewModel()
+    var netViewModel = NetViewModel()
+    //val netViewModel = ViewModelProvider(this).get(NetViewModel::class.java)
 
     //..... Link to SessionActivity
     //val sessionActivity = SessionActivity()
 
     //var m_sessionTable = MutableList(10) {SessionRecord()}
+    var m_iSessions = 0
     var m_sessionTable = sessionRecords
+    var m_iTotalSessions = 0
 
     /**
      * Called when RecyclerView needs a new [ViewHolder] of the given type to represent
@@ -50,11 +54,24 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
         val view = LayoutInflater.from(parent.context).inflate (R.layout.session_one, parent, false)
         val sessionViewholder = SessionViewHolder (view)
 
+        //netViewModel = ViewModelProvider.of(NetViewModel)
 
-        m_sessionTable = netViewModel.m_sessionTable
+        //var iSessions = netViewModel.getSussionCount()
+
+        //..... 2021/04/19: The following data all contains zeroes\
+        //      sessionActivity.m_iSessions
+        //      netViewModel.m_iSessions
+        //      However, m_ssesionTable[] contains valid data
+        //      So, if I can find out how to pass m_iSessions from SessionActivity,
+        //      I may be able to do what I want to do without using Realm.
+        val sessionActivity = SessionActivity()
+        val iSessions = sessionActivity.m_iSessions
+        m_iSessions = netViewModel.m_iSessions
+        m_iSessions = 2
+        //m_sessionTable = netViewModel.m_sessionTable
+
 
         return sessionViewholder
-
     }
 
     /**
@@ -79,8 +96,10 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
      * @param position The position of the item within the adapter's data set.
      */
     override fun onBindViewHolder(holder: SessionViewHolder, position: Int) {
+        //val sessionRecord = netViewModel.m_sessionTable[position]
         val sessionRecord = m_sessionTable[position]
-        val iSessions = netViewModel.m_iSessions
+        //val iSessions = netViewModel.m_iSessions
+        val iSessions = m_iSessions
         //..... Create the view depending on iSessions and position
         if (position <= iSessions)
         {
@@ -116,7 +135,12 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
      * @return The total number of items in this adapter.
      */
     override fun getItemCount(): Int {
-        val iSessions = netViewModel.m_iSessions + 1
+        //..... Both result in zero
+        //      netViewModel.m_iSessions
+        //      m_iSessions
+        //val iSessions = netViewModel.m_iSessions + 1
+        //val iSessions = m_iSessions + 1
+        val iSessions = 3
         return iSessions
     }
 }

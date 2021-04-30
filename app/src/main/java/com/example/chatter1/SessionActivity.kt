@@ -3,6 +3,7 @@ package com.example.chatter1
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.android.synthetic.main.session_content.*
@@ -12,6 +13,9 @@ class SessionActivity : AppCompatActivity() {
 
     //var m_sChatterID = "Chater"
     var m_sChatterID = "RumNet"
+
+    //var netViewModel = NetViewModel()
+    lateinit var netViewModel : NetViewModel
 
     //..... Result of unformatting m_sHttpBuffer
     var m_sHttpBuffer = ""
@@ -31,17 +35,39 @@ class SessionActivity : AppCompatActivity() {
     lateinit var layoutManager: RecyclerView.LayoutManager
     lateinit var adapter: SessionRecyclerViewAdapter
 
-    lateinit var netLogin: NetLogin
+//    val netLogin = NetLogin()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_session)
 
-        //..... Instantiate netLogin
-        netLogin = NetLogin()
-        //buildSessionTable()
+        netViewModel = ViewModelProvider(this).get(NetViewModel::class.java)
 
+        //..... Get HttpBuffer
+        m_sHttpBuffer = intent.getStringExtra(HTTP_BUFFER).toString()
+
+//        netLogin.unformatSessionData(m_sHttpBuffer)
+//        getSessionData()
+//
+        netViewModel.unformatSessionData(m_sHttpBuffer)
+        m_iSessions = netViewModel.m_iSessions
+
+        //buildSessionTable()
+        val iStatus = netViewModel.m_iSessionTableStatus
+        m_iSessions = netViewModel.m_iSessions
+        val issions = netViewModel.m_iSessions
     }
+
+//    fun getSessionData() {
+//
+//        m_iError = netLogin.m_iError
+//        m_iSessions = netLogin.m_iSessions
+//        var i = 0
+//        while (i < m_iSessions) {
+//            m_sessionTable[i] = netLogin.m_sessionTable[i]
+//            i++
+//        }
+//    }
 
     override fun onStart() {
 
@@ -54,12 +80,12 @@ class SessionActivity : AppCompatActivity() {
         recyclerView.adapter = this.adapter
     }
 
-    fun buildSessionTable () {
-
-        //..... getSessionInfo
-        netLogin.getSessionInfo(this, m_sChatterID)
-
-    }
+//    fun buildSessionTable () {
+//
+//        //..... getSessionInfo
+//        netLogin.getSessionInfo(this, m_sChatterID)
+//
+//    }
 
     fun onClickButtonAction (view : View) {
 
@@ -87,7 +113,13 @@ class SessionActivity : AppCompatActivity() {
 
     }
 
-    fun startSession () {
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    //      buildSessionTable (sBuffer) creates Realm DB from the Session data from internet buffer
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    fun buildSessionTable (sBuffer: String) {
+
+        netViewModel.unformatSessionData(m_sHttpBuffer)
 
     }
 }

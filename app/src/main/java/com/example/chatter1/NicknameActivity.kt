@@ -16,6 +16,7 @@ const val NICKNAME_MAX_SIZE = 12
 
 class NicknameActivity : AppCompatActivity() {
 
+    lateinit var m_textNicknameHint : TextView
     lateinit var m_textError : TextView
     lateinit var m_editNickname : EditText
 
@@ -23,8 +24,9 @@ class NicknameActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_nickname)
 
-        m_textError     = findViewById(R.id.textViewError)
-        m_editNickname  = findViewById(R.id.editNickname)
+        m_textNicknameHint      = findViewById(R.id.textViewHint)
+        m_textError             = findViewById(R.id.textViewError)
+        m_editNickname          = findViewById(R.id.editNickname)
 
         //..... Check if this is to create a new Nickname or change an existing one
         //xxxxx 2021/03/20: intent.getStringExtra returns null and I cannot get to wotk.
@@ -37,8 +39,12 @@ class NicknameActivity : AppCompatActivity() {
         var sNickname = getNicknameFromDevice ()
         if (sNickname == "null" || sNickname.isEmpty()) {
             sNickname = ""
+            m_textNicknameHint.text = getString(R.string.nickname_new)
+        } else {
+            m_textNicknameHint.text = getString(R.string.nickname_confirm)
         }
         //..... Set the initial value for m_editNickname
+
         m_editNickname.setText(sNickname)
 
     }
