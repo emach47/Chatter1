@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import io.realm.Realm
 import kotlinx.android.synthetic.main.session_content.*
 import kotlinx.android.synthetic.main.session_one.view.*
 
@@ -16,6 +17,7 @@ class SessionActivity : AppCompatActivity() {
 
     //var netViewModel = NetViewModel()
     lateinit var netViewModel : NetViewModel
+    private lateinit var realm: Realm
 
     //..... Result of unformatting m_sHttpBuffer
     var m_sHttpBuffer = ""
@@ -29,8 +31,8 @@ class SessionActivity : AppCompatActivity() {
     //Participant names
     var m_iHostIpAddress = Array(MAX_SESSIONS, { IntArray(4) })
 
-    //var m_sessionTable = MutableList(10) {SessionRecord()}
-    var m_sessionTable = MutableList(MAX_SESSIONS) {SessionRecord()}
+    //var m_sessionTable = MutableList(MAX_SESSIONS) {SessionRecord()}
+    var m_sessionTable : MutableList<SessionRecord> = mutableListOf<SessionRecord>()
 
     lateinit var layoutManager: RecyclerView.LayoutManager
     lateinit var adapter: SessionRecyclerViewAdapter
@@ -43,31 +45,55 @@ class SessionActivity : AppCompatActivity() {
 
         netViewModel = ViewModelProvider(this).get(NetViewModel::class.java)
 
-        //..... Get HttpBuffer
+        //..... Get HttpBuffer & build Realm Session Table
         m_sHttpBuffer = intent.getStringExtra(HTTP_BUFFER).toString()
+        buildSessionTable(m_sHttpBuffer)
 
-//        netLogin.unformatSessionData(m_sHttpBuffer)
-//        getSessionData()
-//
-        netViewModel.unformatSessionData(m_sHttpBuffer)
-        m_iSessions = netViewModel.m_iSessions
-
-        //buildSessionTable()
-        val iStatus = netViewModel.m_iSessionTableStatus
-        m_iSessions = netViewModel.m_iSessions
-        val issions = netViewModel.m_iSessions
     }
 
-//    fun getSessionData() {
-//
-//        m_iError = netLogin.m_iError
-//        m_iSessions = netLogin.m_iSessions
-//        var i = 0
-//        while (i < m_iSessions) {
-//            m_sessionTable[i] = netLogin.m_sessionTable[i]
-//            i++
-//        }
-//    }
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    //      buildSessionTable (sBuffer) creates Realm DB from the Session data from internet buffer
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    fun buildSessionTable (sHttpBuffer: String) {
+
+        //..... First, unformat the HTTP Buffer
+        //netViewModel.unformatSessionData(m_sHttpBuffer)
+        netViewModel.unformatSessionData(sHttpBuffer)
+
+        //realm = Realm.getDefaultInstance()
+
+        //..... Copy SessionTable from ViewModel to this activity
+        copySessionTable()
+        //..... Add a blank entry at the end
+        addNewSessionEntry()
+    }
+
+
+    fun copySessionTable() {
+
+        //..... Since netViewModel has never been initialized, do it here
+        //netViewModel = NetViewModel()
+
+        m_iError = netViewModel.m_iError
+        m_iSessions = netViewModel.m_iSessions
+        var i = 0
+        while (i < m_iSessions) {
+            val sessionRecord = netViewModel.m_sessionTable[i]
+            m_sessionTable.add (sessionRecord)
+            i++
+        }
+    }
+
+    fun addNewSessionEntry() {
+
+        //..... Since netViewModel has never been initialized, do it here
+        //netViewModel = NetViewModel()
+
+        val sessionRecord = SessionRecord()
+        sessionRecord.sessionGroupId = m_iSessions + 1
+        m_sessionTable.add (sessionRecord)
+    }
 
     override fun onStart() {
 
@@ -75,7 +101,6 @@ class SessionActivity : AppCompatActivity() {
 
         layoutManager = LinearLayoutManager(this)
         recyclerView.layoutManager = layoutManager
-
         adapter = SessionRecyclerViewAdapter(m_sessionTable)
         recyclerView.adapter = this.adapter
     }
@@ -110,16 +135,6 @@ class SessionActivity : AppCompatActivity() {
 //        intent.putExtra (NICKNAME_KEY, sNickname.toString())
 //        setResult (REQUEST_CODE_GET_NICKNAME, intent)
 //        finish ()
-
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    //      buildSessionTable (sBuffer) creates Realm DB from the Session data from internet buffer
-    //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    fun buildSessionTable (sBuffer: String) {
-
-        netViewModel.unformatSessionData(m_sHttpBuffer)
 
     }
 }

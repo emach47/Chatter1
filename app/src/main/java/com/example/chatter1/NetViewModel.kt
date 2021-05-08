@@ -5,15 +5,9 @@ package com.example.chatter1
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.android.volley.Request
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.net.URL
-import java.nio.charset.Charset
 
 const val SESSION_TABLE_STARTED = 0
 const val SESSION_TABLE_COMPLETED = 1
@@ -29,38 +23,42 @@ class NetViewModel : ViewModel() {
     var m_iSessionTableStatus = 0
     var m_iError = 0
     var m_iSessions = 0                 //Current number of sessions in progress
-    var m_iIpAddressClient = Array<Int>(4) {0}
-    var m_sessionTable = MutableList(MAX_SESSIONS) {SessionRecord()}
+    //var m_iIpAddressClient = Array<Int>(4) {0}
+    var m_sIpAddressClient = ""
+    //..... 2021/05/06: Changed due to use expandable List
+    //var m_sessionTable = MutableList(MAX_SESSIONS) {SessionRecord()}
+    var m_sessionTable : MutableList<SessionRecord> = mutableListOf<SessionRecord>()
+
     var m_sHttpBuffer = ""
-
-    fun getHttpSessionData (sSessionID: String) {
-        viewModelScope.launch {
-            m_sSessionID = sSessionID
-            val sURL = HTTP_SESSION_SHOW + sSessionID
-            httpBuffer.value = getHttpResponse (sURL)
-        }
-    }
-
-    suspend fun getHttpResponse (sUrl: String) : String {
-
-        var sResponse = ""
-
-        withContext(Dispatchers.IO) {
-            val url = URL(sUrl)
-            sResponse = url.readText(Charset.defaultCharset())
-        }
-        return sResponse
-    }
-
-    //..... 2021/04/22: the URL function in the following copy from the Gassner's tutorial also gets a warning message.
-    //      I decided to ignore the warning.
-    suspend fun getHttpResponse2 (sUrl: String) : String {
-        return withContext(Dispatchers.IO) {
-            val url = URL(sUrl)
-            return@withContext url.readText(Charset.defaultCharset())
-        }
-    }
-
+//
+//    fun getHttpSessionData (sSessionID: String) {
+//        viewModelScope.launch {
+//            m_sSessionID = sSessionID
+//            val sURL = HTTP_SESSION_SHOW + sSessionID
+//            httpBuffer.value = getHttpResponse (sURL)
+//        }
+//    }
+//
+//    suspend fun getHttpResponse (sUrl: String) : String {
+//
+//        var sResponse = ""
+//
+//        withContext(Dispatchers.IO) {
+//            val url = URL(sUrl)
+//            sResponse = url.readText(Charset.defaultCharset())
+//        }
+//        return sResponse
+//    }
+//
+//    //..... 2021/04/22: the URL function in the following copy from the Gassner's tutorial also gets a warning message.
+//    //      I decided to ignore the warning.
+//    suspend fun getHttpResponse2 (sUrl: String) : String {
+//        return withContext(Dispatchers.IO) {
+//            val url = URL(sUrl)
+//            return@withContext url.readText(Charset.defaultCharset())
+//        }
+//    }
+//
 //
 //    fun getSussionCount () : Int {
 //        if (m_iSessions == 0) {
@@ -71,7 +69,7 @@ class NetViewModel : ViewModel() {
 //        }
 //    }
 
-    fun buildSessionTable (context: AppCompatActivity, sSessionID: String) {
+    fun getHttpSessionData (context: AppCompatActivity, sSessionID: String) {
 
         m_sSessionID = sSessionID
 
@@ -83,24 +81,51 @@ class NetViewModel : ViewModel() {
 
         // Request a string response from the provided URL.
         val stringRequest = StringRequest(
-            //..... The following statement chaged to remove syntax error per stack overflow
-            //      https://stackoverflow.com/questions/32228877/cannot-resolve-symbol-method
-            //DownloadManager.Request.Method.GET, sURL,
-            Request.Method.GET, sURL,
-            { response ->
-                // Display the first 500 characters of the response string.
-                //textData.text = "Method 1: " + "${response}"
-                m_sHttpBuffer = response
-                unformatSessionData(m_sHttpBuffer)
-                //..... move the unformatted session data to NetViewData
-                //moveSessionData()
-                setSessionStatus(SESSION_TABLE_COMPLETED)
-            },
-            { m_sHttpBuffer = sURL + "<-- didn't work!" })
-
+                //..... The following statement changed to remove syntax error per stack overflow
+                //      https://stackoverflow.com/questions/32228877/cannot-resolve-symbol-method
+                //DownloadManager.Request.Method.GET, sURL,
+                Request.Method.GET, sURL,
+                { response ->
+                    m_sHttpBuffer = response
+                    //unformatSessionData(m_sHttpBuffer)
+                    //..... move the unformatted session data to NetViewData
+                    //moveSessionData()
+                    setSessionStatus(SESSION_TABLE_COMPLETED)
+                },
+                { m_sHttpBuffer = sURL + "<-- didn't work!" }
+        )
         // Add the request to the RequestQueue.
         queue.add(stringRequest)
     }
+//
+//    fun buildSessionTable (context: AppCompatActivity, sSessionID: String) {
+//
+//        m_sSessionID = sSessionID
+//
+//        setSessionStatus(SESSION_TABLE_STARTED)
+//
+//        // Instantiate the RequestQueue.
+//        val queue = Volley.newRequestQueue(context)
+//        val sURL = HTTP_SESSION_SHOW + m_sSessionID
+//
+//        // Request a string response from the provided URL.
+//        val stringRequest = StringRequest(
+//            //..... The following statement changed to remove syntax error per stack overflow
+//            //      https://stackoverflow.com/questions/32228877/cannot-resolve-symbol-method
+//            //DownloadManager.Request.Method.GET, sURL,
+//            Request.Method.GET, sURL,
+//            { response ->
+//                m_sHttpBuffer = response
+//                unformatSessionData(m_sHttpBuffer)
+//                //..... move the unformatted session data to NetViewData
+//                //moveSessionData()
+//                setSessionStatus(SESSION_TABLE_COMPLETED)
+//            },
+//            { m_sHttpBuffer = sURL + "<-- didn't work!" })
+//
+//        // Add the request to the RequestQueue.
+//        queue.add(stringRequest)
+//    }
 
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -141,18 +166,20 @@ class NetViewModel : ViewModel() {
         //var sData = ""
         val sIpAddress: String
         //val iBufferSize = sBuffer.length
+        var sessionRecord: SessionRecord
 
         //..... Unformat Control Record
         //val sError  = sBuffer.substring (BYTE_BEGIN_OK, BYTE_END_OK)
         m_iError = sBuffer.substring(BYTE_BEGIN_ERROR, BYTE_END_ERROR).toInt()
         if (m_iError != 0) {
+            m_iSessions = 0
             return
         }
         // Get the number of sessions in progress
         m_iSessions = sBuffer.substring(BYTE_BEGIN_SESSIONS, BYTE_END_SESSIONS).toInt()
         //..... Get the Client IP Address
         sIpAddress = sBuffer.substring(BYTE_BEGIN_IP_ADDRESS_CLIENT, BYTE_BEGIN_IP_ADDRESS_CLIENT + BYTE_SIZE_IP_ADDRESS)
-        unformatIpAddress(sIpAddress, m_iIpAddressClient)
+        m_sIpAddressClient = unformatIpAddress(sIpAddress)
 
         //..... Unformat Session Record(s)
         if (m_iSessions > 0) {
@@ -160,24 +187,44 @@ class NetViewModel : ViewModel() {
             var iStart = BYTE_BEGIN_SESSION_RECORD
             var iEnd = iStart + BYTE_SIZE_SESSION_RECORD
             var sSessionRecord = ""
-            var sessionRecord: SessionRecord
             while (iSession < m_iSessions) {
                 sSessionRecord = sBuffer.substring(iStart, iEnd)
                 sessionRecord = unformatSessionRecord(sSessionRecord)
-                m_sessionTable[iSession] = sessionRecord
+                //..... 2021/05/06: Changed to make m_sessionTable[] expandble list
+                //m_sessionTable[iSession] = sessionRecord
+                m_sessionTable.add(sessionRecord)
                 iSession++
                 iStart = iStart + BYTE_SIZE_SESSION_RECORD
                 iEnd = iEnd + BYTE_SIZE_SESSION_RECORD
             }
         }
+        //..... 2021/05/06: Ass a blank sessionRecord at the end
+        sessionRecord = SessionRecord()
+        m_sessionTable.add(sessionRecord)
     }
+//
+//    fun unformatIpAddress(sIpAddress: String, iIpAddress: Array<Int>) {
+//        for (i in 0..3) {
+//            //m_iIpAddressClient[i] = sBuffer.substring (iIpStart, iIpStart+3).toInt()
+//            val sData = sIpAddress.substring(i * 3, (i + 1) * 3)
+//            iIpAddress[i] = sData.toInt()
+//        }
+//    }
 
-    fun unformatIpAddress(sIpAddress: String, iIpAddress: Array<Int>) {
+    fun unformatIpAddress(sString: String) : String {
+
+        var sIpAddress = ""
         for (i in 0..3) {
             //m_iIpAddressClient[i] = sBuffer.substring (iIpStart, iIpStart+3).toInt()
-            val sData = sIpAddress.substring(i * 3, (i + 1) * 3)
-            iIpAddress[i] = sData.toInt()
+            val sData = sString.substring(i * 3, (i + 1) * 3)
+            val iData = sData.toInt()
+            val sIp = iData.toString()
+            if (sIpAddress.isNotEmpty()) {
+                sIpAddress= sIpAddress + "."
+            }
+            sIpAddress= sIpAddress + sIp
         }
+        return sIpAddress
     }
 
     fun unformatSessionRecord(sSessionRecord: String): SessionRecord {
@@ -193,7 +240,8 @@ class NetViewModel : ViewModel() {
         sessionRecord.sessionMembers = iMembers
         //..... Get the Host local IP address
         sData = sSessionRecord.substring(BYTE_BEGIN_SESSION_HOST_IP_ADDRESS_LOCAL, BYTE_BEGIN_SESSION_HOST_PORT_NUMBER)
-        unformatIpAddress(sData, sessionRecord.sessionHostIpAddressLocal)
+        //unformatIpAddress(sData, sessionRecord.sessionHostIpAddressLocal)
+        sessionRecord.sessionHostIpAddressLocal = unformatIpAddress(sData)
         //..... Get the Port Number
         sData = sSessionRecord.substring(BYTE_BEGIN_SESSION_HOST_PORT_NUMBER, BYTE_BEGIN_SESSION_HOST_NAME)
         sessionRecord.sessionHostPortNumber = sData.toInt()
@@ -211,7 +259,8 @@ class NetViewModel : ViewModel() {
         }
         //..... Get Host local IP address
         sData = sSessionRecord.substring(BYTE_BEGIN_SESSION_HOST_IP_ADDRESS_EXTERNAL, BYTE_BEGIN_SESSION_HOST_IP_ADDRESS_EXTERNAL + BYTE_SIZE_IP_ADDRESS)
-        unformatIpAddress(sData, sessionRecord.sessionHostIpAddressExternal)
+        //unformatIpAddress(sData, sessionRecord.sessionHostIpAddressExternal)
+        sessionRecord.sessionHostIpAddressExternal = unformatIpAddress(sData)
 
         return sessionRecord
     }

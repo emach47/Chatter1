@@ -68,6 +68,7 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
         val iSessions = sessionActivity.m_iSessions
         m_iSessions = netViewModel.m_iSessions
         m_iSessions = 2
+        //m_iSessions = NetViewModel.m_iSessions
         //m_sessionTable = netViewModel.m_sessionTable
 
 
@@ -97,7 +98,9 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
      */
     override fun onBindViewHolder(holder: SessionViewHolder, position: Int) {
         //val sessionRecord = netViewModel.m_sessionTable[position]
+
         val sessionRecord = m_sessionTable[position]
+
         //val iSessions = netViewModel.m_iSessions
         val iSessions = m_iSessions
         //..... Create the view depending on iSessions and position
@@ -140,7 +143,8 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
         //      m_iSessions
         //val iSessions = netViewModel.m_iSessions + 1
         //val iSessions = m_iSessions + 1
-        val iSessions = 3
+        val iSessions = m_sessionTable.size
+        m_iSessions = iSessions
         return iSessions
     }
 }

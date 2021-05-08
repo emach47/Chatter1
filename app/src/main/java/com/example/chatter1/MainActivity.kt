@@ -51,21 +51,20 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        realm = Realm.getDefaultInstance()
+        //..... This should be done in onCreate() in SessionActivity
+        //realm = Realm.getDefaultInstance()
 
-        //..... Instantiate NetLogin
+//        //..... Instantiate NetLogin
 //        netLogin = NetLogin()
 //        netLogin.initNetLogin (m_sSessionID)
-        //..... Build Session Table first before starting NicknameActivity
+        //..... Get HTTP Session data first before starting NicknameActivity
+        //      so we have the Session data by the time we start SessionActivity
         netViewModel = ViewModelProvider(this).get(NetViewModel::class.java)
         //buildSessionTable(m_sSessionID)
-        netViewModel.buildSessionTable(this, m_sSessionID)
-        //..... The following statement did not get a syntax error even though getHttpData() does not return anything
-        //val sHttpBuffer = netViewModel.getHttpData()
-        //netViewModel.getHttpSessionData(m_sSessionID)
-
-
-        val iSessions = netViewModel.m_iSessions
+        //..... Note: The following statement only queues the HTTP request in the background
+        //      and the HTTP buffer is not yet obtained at this stage.
+        //      However, the HTTP should be available while the User responds during the NicknameActivity.
+        netViewModel.getHttpSessionData(this, m_sSessionID)
 
         /**************************************************************************************
          *      Get Nickname
@@ -130,15 +129,13 @@ class MainActivity : AppCompatActivity() {
             //..... Write this information to the device memory
             savePreferenceData(m_sNickname)
 
-            val iSessions = netViewModel.m_iSessions
-
             //..... Now start the next process
             processAfterNickname()
             return
         }
-        if (requestCode == REQUEST_CODE_GET_SESSION_INFORMATION) {
-
-        }
+//        if (requestCode == REQUEST_CODE_GET_SESSION_INFORMATION) {
+//
+//        }
     }
 
     /**************************************************************************************
@@ -149,13 +146,11 @@ class MainActivity : AppCompatActivity() {
         //..... Set the Nickname in the Title Bar
         addNicknameToTitleBar()
 
-        //..... 2021/04/11: Moved to the first step in onCreate()
-//        //..... Get Chatter session info from Internet
-//        val netLogin = NetLogin()
-//        netLogin.getSessionInfo(this, m_sSessionID)
-//        //????? How to synchronize the complettion of getSessionIngo & next stap ?????
-
-        //..... Start SessionActivity to get if the user wants to Start or Join a Chatter session
+        //....................................................................................
+        //  Here we have a BIG assumption that netViewModel.m_sHttpBuffer is available after
+        //  NicknameActivity. If not, m_sHttpBuffer will have the initialized value of null string.
+        //....................................................................................
+        //..... Start SessionActivity to ask if the user wants to Start or Join a Chatter session
         val intent = Intent(this, SessionActivity::class.java)
         intent.putExtra(HTTP_BUFFER, netViewModel.m_sHttpBuffer)
         startActivityForResult(intent, REQUEST_CODE_GET_SESSION_INFORMATION)
@@ -241,7 +236,7 @@ class MainActivity : AppCompatActivity() {
      **************************************************************************************/
     fun processAfterSessionActivity () {
 
-        //TODO Code after Session Activity
+        //TODO: Add codes after Session Activity
 
     }
 
