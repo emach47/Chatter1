@@ -114,12 +114,20 @@ class SessionActivity : AppCompatActivity() {
 
     fun onClickButtonAction (view : View) {
 
-        val sAction = view.buttonSessionAction.text
-        val sSessionGroup = view.textSessionGroup.text
-        var iSessionGroup = sSessionGroup.toString().toInt()
+        //..... Find which action type
+        val sButtonText = view.buttonSessionAction.text
+        val iIndex = sButtonText.indexOf(" ")
+        val sAction = sButtonText.substring(0, iIndex)
+        val sStart = getString(R.string.button_text_start)
+        val sJoin = getString(R.string.button_text_join)
+        val iSessionGroup = sButtonText.substring(iIndex + 1).toInt()
 
         //..... Is this to Start a Chatter session?
-        if (sAction == R.string.button_text_start.toString()) {
+        if (sAction == sStart) {
+
+
+        } else
+        if (sAction == sJoin) {
 
 
         }

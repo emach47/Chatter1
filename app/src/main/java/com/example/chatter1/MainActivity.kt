@@ -133,9 +133,10 @@ class MainActivity : AppCompatActivity() {
             processAfterNickname()
             return
         }
-//        if (requestCode == REQUEST_CODE_GET_SESSION_INFORMATION) {
-//
-//        }
+
+        if (requestCode == REQUEST_CODE_GET_SESSION_INFORMATION) {
+
+        }
     }
 
     /**************************************************************************************

@@ -112,13 +112,21 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
             holder.textSessionMembers?.text = sessionRecord.sessionMembers.toString()
             holder.textSessionHostName?.text = sessionRecord.sessionHostName
             if (sessionRecord.sessionMembers  == 0) {
-            //if (position  == 0) {
-                holder.buttonSessionAction?.setText(R.string.button_text_start)
+                //holder.buttonSessionAction?.setText(R.string.button_text_start)
+                //..... 2021/05/08: This was the only way I could access the value in strings.xml
+                //      I got the answer from the following Stack Overflow URL
+                //      https://stackoverflow.com/questions/52765121/how-do-i-call-getstring-inside-the-onbindviewholder-method-of-a-recycler-vie
+                var sText = holder.itemView.getContext().getString(R.string.button_text_start)
+                //var sText = R.string.button_text_start.toString()
+                sText = sText + " " + (position + 1).toString()
+                holder.buttonSessionAction?.setText (sText)
             } else
             if (sessionRecord.sessionMembers < MAX_MEMBERS)
-            //if (position < MAX_MEMBERS)
             {
-                holder.buttonSessionAction?.setText(R.string.button_text_join)
+                //holder.buttonSessionAction?.setText(R.string.button_text_join)
+                var sText = holder.itemView.getContext().getString(R.string.button_text_join)
+                sText = sText + " " + (position + 1).toString()
+                holder.buttonSessionAction?.setText (sText)
             }
             else {
                 holder.buttonSessionAction?.setText(R.string.button_text_full)
