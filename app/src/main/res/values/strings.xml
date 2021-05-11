@@ -13,4 +13,5 @@
     <string name="text_header_Session_id">Group</string>
     <string name="text_header_session_members">Members</string>
     <string name="text_header_host_name">Host</string>
+    <string name="button_text_send">Send</string>
 </resources>

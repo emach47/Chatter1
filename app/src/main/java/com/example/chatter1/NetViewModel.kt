@@ -2,19 +2,63 @@ package com.example.chatter1
 
 //..... 2021/04/22: the following 2 statements added when viewModelScope.launch {} is coded
 
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.Message
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.android.volley.Request
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import java.net.Socket
+import kotlin.concurrent.thread
 
 const val SESSION_TABLE_STARTED = 0
 const val SESSION_TABLE_COMPLETED = 1
 
+const val MESSAGE_KEY = "message_data"
+const val MESSAGE_KEY_IN = "message_in"
+const val MESSAGE_KEY_OUT = "message_out"
+//.....
+const val SOCKET_STATUS_KEY = "socket_status"
+const val SOCKET_CLOSED = "Closed"
+const val SOCKET_CONNECTEDED = "Connected"
+const val SOCKET_LOST = "Lost"
+
 class NetViewModel : ViewModel() {
 
-    val httpBuffer = MutableLiveData<String>()
+    //==============================================================================================
+    //  liveData for network
+    //==============================================================================================
+    //..... Message
+    val netData = MutableLiveData<String>()
+
+    //val httpBuffer = MutableLiveData<String>()
+
+    //..... Socket connect and disconnect
+    val socketStatusCode = MutableLiveData<String>()
+
+    //==============================================================================================
+    //  Data for Socket
+    //==============================================================================================
+    lateinit var m_socket: Socket
+
+    //..... 2021/02/28: Added input/output for socket connection
+    lateinit var input: BufferedReader
+    lateinit var output: PrintWriter
+
+
+    //..... The switch to loop whether to read socket or not
+    var m_bOkToTryReadSocket = true
 
     //--------------------------------------------------------------------------------------------
     //  Data area for Session Infoamation
@@ -30,6 +74,37 @@ class NetViewModel : ViewModel() {
     var m_sessionTable : MutableList<SessionRecord> = mutableListOf<SessionRecord>()
 
     var m_sHttpBuffer = ""
+
+    private val handler = object : Handler(Looper.getMainLooper()) {
+        override fun handleMessage(msg: Message) {
+            val bundle = msg.data
+            val message = bundle?.getString(MESSAGE_KEY)
+            if (message != null) {
+                //netData.value = netData.value + message + "\n"
+                appendToNetData(message)
+            }
+            val sConnect = bundle.getString (SOCKET_STATUS_KEY)
+            if (sConnect != null) {
+                if (sConnect == SOCKET_CONNECTEDED) {
+                    //..... Perform the Socket connected process
+                    socketStatusCode.value = sConnect
+                } else if (sConnect == SOCKET_LOST) {
+                    //..... Display the connection is lost
+                    appendToNetData("*** Connection Lost ***")
+                    //..... Perform the Socket closed process
+                    socketStatusCode.value = sConnect
+                } else if (sConnect == SOCKET_CLOSED) {
+                    //..... Display the connection is lost
+                    appendToNetData("=== Socket is closed ===")
+                    //..... Perform the Socket closed process
+                    socketStatusCode.value = sConnect
+                }
+            }
+        }
+    }
+
+
+
 //
 //    fun getHttpSessionData (sSessionID: String) {
 //        viewModelScope.launch {
@@ -269,74 +344,155 @@ class NetViewModel : ViewModel() {
     fun setSessionStatus (iStatus: Int) {
         m_iSessionTableStatus = iStatus
     }
+//
+//    fun moveSessionData() {
+//
+//        //..... Since netViewModel has never been initialized, do it here
+//        //netViewModel = NetViewModel()
+//
+//        m_iError = m_iError
+//        m_iSessions = m_iSessions
+//        var i = 0
+//        while (i < m_iSessions) {
+//            m_sessionTable[i] = m_sessionTable[i]
+//            i++
+//        }
+//    }
 
-    fun moveSessionData() {
+    //==================================================================================================================
+    //      Socket operations
+    //==================================================================================================================
 
-        //..... Since netViewModel has never been initialized, do it here
-        //netViewModel = NetViewModel()
-
-        m_iError = m_iError
-        m_iSessions = m_iSessions
-        var i = 0
-        while (i < m_iSessions) {
-            m_sessionTable[i] = m_sessionTable[i]
-            i++
+    fun connectToServer(sServerIpAddress: String, iServerPort: Int) {
+        viewModelScope.launch {
+            val sMessage = getSocketData(sServerIpAddress, iServerPort)
+            //..... 2021/03/18: The following statement will clear all the previous messages if present.
+            //                  Consider if this is OK or preserve the previous messages.
+            //netData.value = sResult
+            appendToNetData(sMessage)
         }
     }
 
-//
-//    fun setSessionID (sSessionID: String) {
-//        m_sSessionID = sSessionID
-//    }
-//
-//    fun getHttpData(iRequestCode : Int) {
-//        viewModelScope.launch {
-//            httpBuffer.value = getHttpBuffer(iRequestCode)
-//        }
-//    }
-//    suspend fun getHttpBuffer(iRequestCode : Int): String {
-//        //var httpData: String
-//
-//        val sUrl = formatUrl(iRequestCode)
-//
-//        return withContext(Dispatchers.IO) {
-//            val url = URL(sUrl)
-//            return@withContext url.readText(Charset.defaultCharset())
-//        }
-//    }
-//
-//    fun formatUrl (iRequestCode: Int) :String {
-//
-//        var sUrl = ""
-//        if (iRequestCode == HTTP_REQUEST_SESSION_INFORMARION) {
-//            sUrl = "http://www.machida.com/cgi-bin/show2.pl?Game=" + m_sSessionID
-//        }
-//
-//        return sUrl
-//    }
-//
-//    fun getHttpData(sSessionID: String) {
-//        viewModelScope.launch {
-//            httpBuffer.value = getHttpBuffer(sSessionID)
-//        }
-//    }
-//
-//    suspend fun getHttpBuffer(sSessionID : String): String {
-//        var httpData: String
-//
-//        val sGameID = "Boggle"
-//        var sURL = "http://www.machida.com/cgi-bin/show2.pl?Game="
-//        sURL = sURL + sGameID
-//
-//        return withContext(Dispatchers.IO) {
-//            var url = URL(sURL)
-//            return@withContext url.readText(Charset.defaultCharset())
-//
-//        }
-//
-//    }
-//
-//    fun requestSessionInformation (iRequestCode: Int) {
-//
-//    }
+    suspend fun getSocketData(sServerIpAddress: String, iServerPort: Int): String {
+        var sData: String
+
+        sData = withContext(Dispatchers.IO) {
+            //..... NOTE: THe following statement will hang forever if the Server is not running.
+            //          A new process to handle such case should be implemented.
+            //          For example, pass "Connecting ..." to UI via Bundle to notify the user
+            //          and erase with the "Connected ... " message with the return.
+            m_socket = Socket(sServerIpAddress, iServerPort)
+            output = PrintWriter(m_socket.getOutputStream())
+            input = BufferedReader(InputStreamReader(m_socket.getInputStream()))
+            sData = "Connected to " + sServerIpAddress + " (" + iServerPort.toString() + ")"
+            putBundleString(SOCKET_STATUS_KEY, SOCKET_CONNECTEDED)
+            //..... Start a forever loop to get incoming messages from the Server
+            m_bOkToTryReadSocket = true
+            readMessage ()
+            //xxxxx The following return of the socket connection may be useless.
+            //..... Return the result of the socket connection
+            return@withContext sData
+        }
+        return sData
+    }
+
+    fun putBundleString (sMessageKey : String, sMessage: String) {
+
+        val bundle = Bundle()
+        bundle.putString(sMessageKey, sMessage)
+        Message().also {
+            it.data = bundle
+            handler.sendMessage(it)
+        }
+
+    }
+
+    fun appendToNetData (sMessage : String) {
+        var sData = netData.value
+        //..... 2021/03/18: nData.value returns "null" if it is null. Remove it.
+        if (sData.isNullOrEmpty()) {
+            sData = ""
+        }
+        sData = sData + sMessage + "\n"
+        netData.value = sData
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    //      readMessage () reads a message sent by Server.
+    //
+    //      This is a forever-looping process and constantly checks for an incoming
+    //      message from the Server.
+    //      When a message is received via input.read(), it puts it in the bundle
+    //      so that the UI thread (MainActivity) can use it to display in the TextView.
+    //
+    ////////////////////////////////////////////////////////////////////////////
+    private fun readMessage() {
+        thread(start = true) {
+            val bundle = Bundle()
+            while (m_bOkToTryReadSocket) {
+                try {
+                    var message: String = input.readLine()
+                    message = "Server: " + message
+                    //..... The following statement will not compile
+                    //runOnUiThread(Runnable { tvMessages.append("server: $message\n") })
+                    //..... The following statement causes a runtime failure
+                    //netData.value = netData.value + message + "\n"
+                    bundle.putString(MESSAGE_KEY, message)
+                    Message().also {
+                        it.data = bundle
+                        handler.sendMessage(it)
+                    }
+                } catch (e: Exception) {
+                    //..... Is this exception the result of the DISCONNECT Button?
+                    if (m_bOkToTryReadSocket) {
+                        //..... No, the connection to the server is lost
+                        putBundleString(SOCKET_STATUS_KEY, SOCKET_LOST)
+                        closeSocket (m_socket)
+                        e.printStackTrace()
+                        //..... Stop the readLine() loop
+                        m_bOkToTryReadSocket = false
+                    }
+                }
+            }
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    //      sendMessage (sMessage) sends a message to Server.
+    //
+    //      This function is called from MainAvtivity when the user press the SEND button.
+    //      It passes the sent message back to the UI thread via bundle
+    //      so that the user can recognize the message was sent.
+    //
+    ////////////////////////////////////////////////////////////////////////////
+    fun sendMessage(sMessage: String) {
+
+        thread(start = true) {
+
+//            val bundle = Bundle()
+            //..... Send the message
+            output.write(sMessage)
+            //..... 2021/03/08: Must put a CR to complete sending the message
+            output.println()
+            output.flush()
+
+            //..... Send sMessage to UI via bundle
+//            bundle.putString(MESSAGE_KEY, sMessage)
+//            Message().also {
+//                it.data = bundle
+//                handler.sendMessage(it)
+//            }
+            putBundleString (MESSAGE_KEY, sMessage)
+        }
+    }
+
+    fun closeSocket (socket: Socket) {
+
+        m_bOkToTryReadSocket = false
+        socket.close()
+        //..... Notify MainActivity
+        putBundleString(SOCKET_STATUS_KEY, SOCKET_CLOSED)
+
+    }
+
 }

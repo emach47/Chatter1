@@ -1,5 +1,6 @@
 package com.example.chatter1
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -116,21 +117,27 @@ class SessionActivity : AppCompatActivity() {
 
         //..... Find which action type
         val sButtonText = view.buttonSessionAction.text
-        val iIndex = sButtonText.indexOf(" ")
-        val sAction = sButtonText.substring(0, iIndex)
-        val sStart = getString(R.string.button_text_start)
-        val sJoin = getString(R.string.button_text_join)
-        val iSessionGroup = sButtonText.substring(iIndex + 1).toInt()
 
-        //..... Is this to Start a Chatter session?
-        if (sAction == sStart) {
-
-
-        } else
-        if (sAction == sJoin) {
-
-
-        }
+        val intent = Intent()
+        intent.putExtra (RETURN_DATA_SESSION_ACTION_KEY, sButtonText)
+        setResult (REQUEST_CODE_GET_SESSION_INFORMATION, intent)
+        finish ()
+//
+//        val iIndex = sButtonText.indexOf(" ")
+//        val sAction = sButtonText.substring(0, iIndex)
+//        val sStart = getString(R.string.button_text_start)
+//        val sJoin = getString(R.string.button_text_join)
+//        val iSessionGroup = sButtonText.substring(iIndex + 1).toInt()
+//
+//        //..... Is this to Start a Chatter session?
+//        if (sAction == sStart) {
+//
+//
+//        } else
+//        if (sAction == sJoin) {
+//
+//
+//        }
 
         //..... 2021/03/20: The intent.puExtra () requires .toString when passing the sNickName
         //      Otherwise the onActivityResult() in MainActivity will get null on sNickname.
