@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Chatter1</string>
+    <string name="app_name">Chatter</string>
     <string name="title_activity_nickname">NicknameActivity</string>
     <string name="nickname_new">Let\'s create your nick name</string>
     <string name="nickname_confirm">Press OK or change your Nickname</string>

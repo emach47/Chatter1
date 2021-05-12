@@ -122,34 +122,5 @@ class SessionActivity : AppCompatActivity() {
         intent.putExtra (RETURN_DATA_SESSION_ACTION_KEY, sButtonText)
         setResult (REQUEST_CODE_GET_SESSION_INFORMATION, intent)
         finish ()
-//
-//        val iIndex = sButtonText.indexOf(" ")
-//        val sAction = sButtonText.substring(0, iIndex)
-//        val sStart = getString(R.string.button_text_start)
-//        val sJoin = getString(R.string.button_text_join)
-//        val iSessionGroup = sButtonText.substring(iIndex + 1).toInt()
-//
-//        //..... Is this to Start a Chatter session?
-//        if (sAction == sStart) {
-//
-//
-//        } else
-//        if (sAction == sJoin) {
-//
-//
-//        }
-
-        //..... 2021/03/20: The intent.puExtra () requires .toString when passing the sNickName
-        //      Otherwise the onActivityResult() in MainActivity will get null on sNickname.
-        //      In both Olymoic3 & Kotlin14C, the string data were converted using .toString() prior to putExtra().
-        //      This solution was found in Stack Overflow. The URL is below
-        //          https://stackoverflow.com/questions/15555750/android-intent-getstringextra-returns-null
-        //
-        //..... Return the Nickname to the Activity that called me
-//        val intent = Intent()
-//        intent.putExtra (NICKNAME_KEY, sNickname.toString())
-//        setResult (REQUEST_CODE_GET_NICKNAME, intent)
-//        finish ()
-
     }
 }

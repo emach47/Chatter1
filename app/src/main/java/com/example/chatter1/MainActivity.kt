@@ -117,26 +117,7 @@ class MainActivity : AppCompatActivity() {
         //      However, the HTTP should be available while the User responds during the NicknameActivity.
         netViewModel.getHttpSessionData(this, m_sSessionID)
 
-        /**************************************************************************************
-         *      Get Nickname
-         **************************************************************************************/
-//        //..... Get m_sNickname from the device
-//        m_sNickname = getNicknameFromDevice()
-//        //..... If the Nickname does not exist yet, we must ask the user to create one
-//        //..... For Debugging Only
-//        m_sNickname = ""
-//        if (m_sNickname.isEmpty()) {
-//            val intent = Intent(this, NicknameActivity::class.java)
-//            startActivityForResult(intent, REQUEST_CODE_GET_NICKNAME)
-//            //..... Wait until NicknameActivity finishes before starting the next step
-//            //      That is, the next step is called from onActivityResult(
-//            return
-//        }
-//
-//        //..... We have the Nickname; Start the next process
-//        processAfterNickname()
-
-        //..... Start SessionActivity to get or confirm the Nickname
+        //..... Start NicknameActivity to get or confirm the Nickname
         //      And to give time for buildSessionTable
         val intent = Intent(this, NicknameActivity::class.java)
         startActivityForResult(intent, REQUEST_CODE_GET_NICKNAME)
@@ -154,12 +135,11 @@ class MainActivity : AppCompatActivity() {
             //          https://stackoverflow.com/questions/15555750/android-intent-getstringextra-returns-null
             val sNickname = data?.getStringExtra(NICKNAME_KEY)
             if (sNickname.isNullOrEmpty()) {
-                //..... WE HAVE to get the Nickname again
+                //..... We HAVE to get the Nickname again
                 val intent = Intent(this, NicknameActivity::class.java)
                 startActivityForResult(intent, REQUEST_CODE_GET_NICKNAME)
                 return
             }
-            //..... We have a stored Nickname, let's use it
             m_sNickname = sNickname
             //..... Write this information to the device memory
             savePreferenceData(m_sNickname)
@@ -206,7 +186,8 @@ class MainActivity : AppCompatActivity() {
 
         //....................................................................................
         //  Here we have a BIG assumption that netViewModel.m_sHttpBuffer is available after
-        //  NicknameActivity. If not, m_sHttpBuffer will have the initialized value of null string.
+        //  NicknameActivity. If not, m_sHttpBuffer will be a null string.
+        //  In the future, it my be necessary to handle such a case.
         //....................................................................................
         //..... Start SessionActivity to ask if the user wants to Start or Join a Chatter session
         val intent = Intent(this, SessionActivity::class.java)
@@ -214,24 +195,6 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(intent, REQUEST_CODE_GET_SESSION_INFORMATION)
         m_sHttpBuffer = netViewModel.m_sHttpBuffer
         return
-
-        //===== The following activities are now performed by SessionActivity; We need wait until it finishes
-//        //..... Start SessionActivity to get the session information from Internet
-//        val textViewMessage : TextView = findViewById(R.id.textViewMessage)
-//        //..... Instantiate netViewModel
-//        netViewModel = ViewModelProvider(this).get(NetViewModel::class.java)
-//        //..... Setup Session ID
-//        netViewModel.setSessionID(m_sSessionID)
-//        //..... Setup observer for NetViewModel to this Activity
-//        netViewModel.httpBuffer.observe(this, Observer {
-//            //..... We have the response from the HTTP operation
-//            textViewMessage.text = it
-//            m_sHttpBuffer = it
-//            processHttpData()
-//        })
-//
-//        //..... Show all the sessions in progress
-//        requestSessionInformation()
     }
 
     /**************************************************************************************
