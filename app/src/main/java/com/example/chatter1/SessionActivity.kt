@@ -106,13 +106,6 @@ class SessionActivity : AppCompatActivity() {
         recyclerView.adapter = this.adapter
     }
 
-//    fun buildSessionTable () {
-//
-//        //..... getSessionInfo
-//        netLogin.getSessionInfo(this, m_sChatterID)
-//
-//    }
-
     fun onClickButtonAction (view : View) {
 
         //..... Find which action type
