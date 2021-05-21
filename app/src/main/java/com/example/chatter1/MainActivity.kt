@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
     //private lateinit var realm: Realm
 
     //..... Define Session ID
-    val m_sSessionID = "RumNet"
+    val m_sGameID = "RumNet"
 
     //..... Properties for NicknameActivity
     var m_sNickname =""
@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity() {
         //..... Note: The following statement only queues the HTTP request in the background
         //      and the HTTP buffer is not yet obtained at this stage.
         //      However, the HTTP should be available while the User responds during the NicknameActivity.
-        netViewModel.getHttpSessionData(this, m_sSessionID)
+        netViewModel.getHttpSessionData(this, m_sGameID)
 
         //..... Start NicknameActivity to get or confirm the Nickname
         //      And to give time for buildSessionTable
@@ -164,8 +164,7 @@ class MainActivity : AppCompatActivity() {
 
                 //..... Is this to Start a Chatter session?
                 if (sAction == sStart) {
-
-
+                    processStartSession(iSessionID)
                 } else
                 if (sAction == sJoin) {
                     processJoin (iSessionID)
@@ -256,10 +255,32 @@ class MainActivity : AppCompatActivity() {
     /**************************************************************************************
      *      Socket Communication functions
      **************************************************************************************/
+    fun processStartSession (iSessionID: Int) {
+
+        //..... Remember iSessionID from the Join Button is one-relative
+        val iIndex = iSessionID - 1
+
+        // (1)  Do URL=http://www.machida.com/cgi-bin/addhost2.pl?Game=RumNet+HOST=HostName****+ADDR=aaabbbcccddd+PORT=8080
+        // (2)  Begin socket listen
+        // (3)  When a connection is made, add the client to the socket table up to MAX_MEMBERS
+        // (4)  Get guest's NickName and add it to the bulletin board
+        //      http://www.machida.com/cgi-bin/addguest2.pl?Game=RumNet+HOST=<Host name>+GUEST=<<GuestName>
+        //
+        netViewModel.addHost (this, m_sGameID, m_sNickname, iSessionID)
+//        val sessionRecord = netViewModel.m_sessionTable[iIndex]
+//        val sHostIpAdress = sessionRecord.sessionHostIpAddressLocal
+//        val iPort = sessionRecord.sessionHostPortNumber
+//
+//        //..... Connect to Server
+//        netViewModel.connectToServer(sHostIpAdress, iPort)
+
+
+    }
+
     fun processJoin (iSessionID: Int) {
 
         //..... Remember iSessionID from the Join Button is one-relative
-        val iIndex = iSessionID -1
+        val iIndex = iSessionID - 1
 
         //..... 2021/05/09: The netViewModel.m_sessionTable[] that was created by SessionActivity
         //      is gone for some reason and we must rebuild it once again.

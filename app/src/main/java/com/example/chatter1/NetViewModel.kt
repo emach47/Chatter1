@@ -2,6 +2,7 @@ package com.example.chatter1
 
 //..... 2021/04/22: the following 2 statements added when viewModelScope.launch {} is coded
 
+import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -19,7 +20,12 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
+import java.net.InetAddress
+import java.net.NetworkInterface.*
 import java.net.Socket
+import java.net.SocketException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.concurrent.thread
 
 const val SESSION_TABLE_STARTED = 0
@@ -63,7 +69,7 @@ class NetViewModel : ViewModel() {
     //--------------------------------------------------------------------------------------------
     //  Data area for Session Infoamation
     //--------------------------------------------------------------------------------------------
-    var m_sSessionID = ""
+    var m_sGameID = ""
     var m_iSessionTableStatus = 0
     var m_iError = 0
     var m_iSessions = 0                 //Current number of sessions in progress
@@ -106,10 +112,10 @@ class NetViewModel : ViewModel() {
 
 
 //
-//    fun getHttpSessionData (sSessionID: String) {
+//    fun getHttpSessionData (sGameID: String) {
 //        viewModelScope.launch {
-//            m_sSessionID = sSessionID
-//            val sURL = HTTP_SESSION_SHOW + sSessionID
+//            m_sGameID = sGameID
+//            val sURL = HTTP_SESSION_SHOW + sGameID
 //            httpBuffer.value = getHttpResponse (sURL)
 //        }
 //    }
@@ -144,15 +150,15 @@ class NetViewModel : ViewModel() {
 //        }
 //    }
 
-    fun getHttpSessionData (context: AppCompatActivity, sSessionID: String) {
+    fun getHttpSessionData (context: AppCompatActivity, sGameID: String) {
 
-        m_sSessionID = sSessionID
+        m_sGameID = sGameID
 
         setSessionStatus(SESSION_TABLE_STARTED)
 
         // Instantiate the RequestQueue.
         val queue = Volley.newRequestQueue(context)
-        val sURL = HTTP_SESSION_SHOW + m_sSessionID
+        val sURL = HTTP_SESSION_SHOW + m_sGameID
 
         // Request a string response from the provided URL.
         val stringRequest = StringRequest(
@@ -173,15 +179,15 @@ class NetViewModel : ViewModel() {
         queue.add(stringRequest)
     }
 //
-//    fun buildSessionTable (context: AppCompatActivity, sSessionID: String) {
+//    fun buildSessionTable (context: AppCompatActivity, sGameID: String) {
 //
-//        m_sSessionID = sSessionID
+//        m_sGameID = sGameID
 //
 //        setSessionStatus(SESSION_TABLE_STARTED)
 //
 //        // Instantiate the RequestQueue.
 //        val queue = Volley.newRequestQueue(context)
-//        val sURL = HTTP_SESSION_SHOW + m_sSessionID
+//        val sURL = HTTP_SESSION_SHOW + m_sGameID
 //
 //        // Request a string response from the provided URL.
 //        val stringRequest = StringRequest(
@@ -340,6 +346,114 @@ class NetViewModel : ViewModel() {
         return sessionRecord
     }
 
+    fun addHost (context: AppCompatActivity, sGameID: String, sHostName: String, iSessionID: Int) {
+
+        m_sGameID = sGameID
+
+//        setSessionStatus(SESSION_TABLE_STARTED)
+
+        // Instantiate the RequestQueue.
+        val queue = Volley.newRequestQueue(context)
+        val sURL = constructUrlAddHost (context, sGameID, sHostName)
+
+        // Request a string response from the provided URL.
+        val stringRequest = StringRequest(
+                //..... The following statement changed to remove syntax error per stack overflow
+                //      https://stackoverflow.com/questions/32228877/cannot-resolve-symbol-method
+                //DownloadManager.Request.Method.GET, sURL,
+                Request.Method.GET, sURL,
+                { response ->
+                    m_sHttpBuffer = response
+                },
+                { m_sHttpBuffer = sURL + "<-- didn't work!" }
+        )
+        // Add the request to the RequestQueue.
+        queue.add(stringRequest)
+    }
+
+    fun constructUrlAddHost (context: AppCompatActivity, sGameID: String, sHostName: String) : String {
+
+        //http://www.machida.com/cgi-bin/addhost2.pl?Game=RumNet+HOST=TestHost0001+ADDR=010000000121+PORT=8080
+        var sUrl = HTTP_ADD_HOST + sGameID
+        val sNameNormalized = normalizeName (sHostName)
+        sUrl = sUrl + "+HOST=" + sNameNormalized
+        //..... Get local IP address
+        //val sIpAddressNormalized = "100000000121"
+        //var sIpAddress = getMyLocalIpAddress ()
+        var sIpAddress = getLocalIpAddress (context)
+        if (sIpAddress.isNullOrEmpty()) {
+            sIpAddress = "0.0.0.0"
+        }
+        val sIpAddressNormalized = normalizeIpAddress (sIpAddress)
+        sUrl = sUrl + "+ADDR=" + sIpAddressNormalized + "+PORT=8080"
+
+        return sUrl
+    }
+
+    fun getLocalIpAddress(context: AppCompatActivity): String? {
+        //val wifiManager = (applicationContext.getSystemService(AppCompatActivity.WIFI_SERVICE) as WifiManager)
+        val wifiManager = context.getApplicationContext().getSystemService(AppCompatActivity.WIFI_SERVICE) as WifiManager
+        val wifiInfo = wifiManager.connectionInfo
+        val ipInt = wifiInfo.ipAddress
+        return InetAddress.getByAddress(
+            ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(ipInt).array()
+            ).hostAddress
+    }
+
+    fun getMyLocalIpAddress(): String? {
+        try {
+            val en = getNetworkInterfaces()
+            while (en
+                            .hasMoreElements()
+            ) {
+                val intf = en.nextElement()
+                val enumIpAddr = intf.inetAddresses
+                while (enumIpAddr
+                                .hasMoreElements()
+                ) {
+                    val inetAddress = enumIpAddr.nextElement()
+                    if (!inetAddress.isLoopbackAddress) {
+                        return inetAddress.hostAddress.toString()
+                    }
+                }
+            }
+        } catch (ex: SocketException) {
+
+            return (ex.toString());
+        }
+        return null
+    }
+
+    //..... normalizedName adds trailing "*" to make the name 12 characters
+    //      Example: HostName -> HostName****
+    fun normalizeName (sName: String) : String {
+
+        var sNameNormalized = sName
+        val iLength = sName.length
+        val iSize = BYTE_SIZE_PLAYER_NAME - iLength
+        if (iSize > 0) {
+            sNameNormalized = sNameNormalized.padEnd(BYTE_SIZE_PLAYER_NAME, '*')
+        }
+        else if (iSize < 0) {
+            sNameNormalized = sNameNormalized.take(BYTE_SIZE_PLAYER_NAME)
+        }
+
+        return sNameNormalized
+    }
+
+    //..... normalizedIpAddress converts 10.0.0.121 to 010000000121
+    fun normalizeIpAddress (sIpAddress: String) : String {
+
+        var sAddresses = sIpAddress.split(".")
+        var sNormalizedIpAddress = ""
+        sAddresses.forEach {
+            var sAddr = "00" + it
+            sAddr = sAddr.takeLast(3)
+            sNormalizedIpAddress = sNormalizedIpAddress + sAddr
+        }
+
+        return sNormalizedIpAddress
+    }
 
     fun setSessionStatus (iStatus: Int) {
         m_iSessionTableStatus = iStatus
