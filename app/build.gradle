@@ -14,7 +14,7 @@ plugins {
 //    apply plugin: 'kotlin-kapt'
 //    apply plugin: 'realm-android'
     id 'kotlin-kapt'
-    id 'realm-android'
+//    id 'realm-android'
 }
 
 //..... 2021/04/22: The following statements did not eliminate the deprecated warning generated with the above plugin for kotlin-android-extensions

@@ -34,6 +34,12 @@ const val MESSAGE_KEY = "message_data"
 const val MESSAGE_KEY_IN = "message_in"
 const val MESSAGE_KEY_OUT = "message_out"
 
+//..... In broadcastMessage
+const val MESSAGE_HOST_ORIGINATED = 999
+//const val MESSAGE_BROADCAST = 100
+//const val MESSAGE_ORIGINAL = 0
+
+
 //..... Constants for SOCKET operation
 const val SOCKET_PORT = 8080
 
@@ -72,6 +78,8 @@ class NetViewModel : ViewModel() {
     //var m_guestInput = MutableList (MAX_GUESTS) { InputStream() }
     var m_guestInput:  Array<BufferedReader?> = Array(MAX_GUESTS) { null }
     var m_guestOutput: Array<PrintWriter?> = Array(MAX_GUESTS) { null }
+
+    //var m_iOriginator = MESSAGE_BROADCAST
 
 
     //==============================================================================================
@@ -119,15 +127,17 @@ class NetViewModel : ViewModel() {
             }
             val sConnect = bundle.getString(SOCKET_STATUS_KEY)
             if (sConnect != null) {
-                if (sConnect == SOCKET_CONNECTEDED) {
+                val sCode = sConnect.take(4)
+                if (sCode == SOCKET_CONNECTEDED.take(4)) {
                     //..... Perform the Socket connected process
                     socketStatusCode.value = sConnect
-                } else if (sConnect == SOCKET_LOST) {
+                } else if (sCode == SOCKET_LOST.take(4)) {
                     //..... Display the connection is lost
-                    appendToNetData("*** Connection Lost ***")
+                    var sMessage =  "*** Connection " + sConnect
+                    appendToNetData (sMessage)
                     //..... Perform the Socket closed process
                     socketStatusCode.value = sConnect
-                } else if (sConnect == SOCKET_CLOSED) {
+                } else if (sCode == SOCKET_CLOSED.take(4)) {
                     //..... Display the connection is lost
                     appendToNetData("=== Socket is closed ===")
                     //..... Perform the Socket closed process
@@ -916,7 +926,7 @@ class NetViewModel : ViewModel() {
                 //..... Successfully accepted this Guest
                 val inetAddress = guestSocket.inetAddress
                 sGuestIpAddress = inetAddress.hostAddress
-                sData = "Connected to " + sGuestIpAddress + "\n"
+                sData = "Connected to " + sGuestIpAddress
                 m_sGuestIpAddress = sGuestIpAddress
                 //..... Accept this guest
                 val iGuest = m_iGuestSockets - 1
@@ -989,13 +999,20 @@ class NetViewModel : ViewModel() {
         readGuestMessage (iGuest)
     }
 
-    fun broadcastMessage(sMessage: String) {
+    fun broadcastMessage(sMessage: String, iGuestOriginated: Int) {
 
+        //..... iGuestOriginated == MESSAGE_HOST_ORIGINATED means it originated from the Host
         thread(start = true) {
             for (iGuest in 0..(m_iGuestSockets - 1)) {
-                sendGuestMessage(iGuest, sMessage)
+                //..... Skip the sending Guest
+                if (iGuest != iGuestOriginated) {
+                    sendGuestMessage(iGuest, sMessage)
+                }
             }
-            putBundleString(MESSAGE_KEY, sMessage)
+            //..... Do not show the sent message if it came from a Guest
+            if (iGuestOriginated == MESSAGE_HOST_ORIGINATED) {
+                putBundleString(MESSAGE_KEY, sMessage)
+            }
         }
     }
 
@@ -1018,29 +1035,29 @@ class NetViewModel : ViewModel() {
 
         val sSocket = m_guestSocket[iGuest]
         val input = m_guestInput[iGuest]
+        var sMessage = ""
 
         thread(start = true) {
             if (input != null) {
                 val bundle = Bundle()
                 while (m_bOkToTryReadSocket) {
                     try {
-                        val sMessage: String = input.readLine()
-                        //..... sMessage now has the preceding name
-                        //sMessage = m_sGuestName[iGuest] + ": " + sMessage
-                        //..... The following statement will not compile
-                        //runOnUiThread(Runnable { tvMessages.append("server: $message\n") })
-                        //..... The following statement causes a runtime failure
-                        //netData.value = netData.value + message + "\n"
+                        sMessage = input.readLine()
+                        //..... sMessage is now preceded by Nickname
+                        getGuestNickname (sMessage, iGuest)
                         bundle.putString(MESSAGE_KEY, sMessage)
                         Message().also {
                             it.data = bundle
                             handler.sendMessage(it)
                         }
+                        //..... Broadcast sMessage to the Guests exclusing the originator
+                        broadcastMessage(sMessage, iGuest)
                     } catch (e: Exception) {
                         //..... Is this exception the result of the DISCONNECT Button?
                         if (m_bOkToTryReadSocket) {
                             //..... No, the connection to the server is lost
-                            putBundleString(SOCKET_STATUS_KEY, SOCKET_LOST)
+                            sMessage = SOCKET_LOST + " to " + m_sGuestName[iGuest]
+                            putBundleString(SOCKET_STATUS_KEY, sMessage)
                             closeSocket(sSocket)
                             e.printStackTrace()
                             //..... Stop the readLine() loop
@@ -1052,13 +1069,36 @@ class NetViewModel : ViewModel() {
         }
     }
 
+    fun getGuestNickname (sMessage : String, iGuest : Int) {
+
+        var sNickname = "Guest" + (iGuest+1).toString()
+        if (sNickname == m_sGuestName[iGuest]) {
+            sNickname = extractGuestNickname (sMessage)
+            if (sNickname.isNotEmpty()) {
+                m_sGuestName[iGuest] = sNickname
+            }
+        }
+    }
+
+    fun extractGuestNickname (sMessage: String) : String {
+        var sNickname = ""
+        val iLength = sMessage.length - 1
+        for (i in 0..iLength) {
+            if (sMessage[i] == ':') {
+                sNickname = sMessage.substring (0, i)
+                break
+            }
+        }
+
+        return sNickname
+    }
     fun shutdownHost(context: AppCompatActivity, sGameID: String, sHostName: String) {
 
         removeHost (context, sGameID, sHostName)
         //..... Close all Client sockets if still opened
         closeAllGuestSockets()
         //..... Close ServerSoclet
-        m_serverSocket.close()
+        //m_serverSocket.close()
 
     }
 
@@ -1090,6 +1130,8 @@ class NetViewModel : ViewModel() {
 
     fun closeGuestSocket (iGuest: Int) {
 
+        val socket = m_guestSocket[iGuest]
+        socket.close()
     }
 
 

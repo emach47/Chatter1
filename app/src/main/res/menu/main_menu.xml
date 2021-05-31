@@ -5,4 +5,8 @@
     <item
         android:id="@+id/menu_edit_nickname"
         android:title="@string/menu_edit_nickname" />
+    <item
+        android:id="@+id/menu_end_chatter"
+        android:title="@string/menu_end_chatter" />
+
 </menu>

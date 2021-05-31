@@ -27,10 +27,12 @@ const val HTTP_REQUEST_REMOVE_HOST            = 3
 const val HTTP_REQUEST_ADD_GUEST              = 4
 const val HTTP_REQUEST_REMOVE_GUEST           = 5
 
+const val SOCKET_MODE_GUEST           = 0
+const val SOCKET_MODE_HOST            = 1
 
 class MainActivity : AppCompatActivity() {
 
-    //private lateinit var realm: Realm
+    var m_iSocketMode = SOCKET_MODE_GUEST
 
     //..... Define Session ID
     val m_sGameID = "RumNet"
@@ -51,6 +53,24 @@ class MainActivity : AppCompatActivity() {
 
     lateinit var m_textMessageIn: TextView
     lateinit var m_editMessageOut: EditText
+//
+//    /////////////////////////////////////////////////////////////////////////////////////////
+//    //      Handler to recognize a message from background thread
+//    //      2021/05/21 Copied from ServerK1 and modified
+//    /////////////////////////////////////////////////////////////////////////////////////////
+//    private val handler = object : Handler(Looper.getMainLooper()) {
+//        override fun handleMessage(msg: Message) {
+//            val bundle = msg.data
+//            val message = bundle?.getString(MESSAGE_KEY)
+//            //..... Add message to the last line
+//            var sText = ""
+//            //= m_textMessages.text.toString()
+//            //..... 2021/03/06: the following CR (\n) does not work
+//            sText = sText + "\n" + message
+//            //m_textMessages.text = sText
+//            //m_textMessages.setText(sText)
+//        }
+//    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -164,10 +184,12 @@ class MainActivity : AppCompatActivity() {
 
                 //..... Is this to Start a Chatter session?
                 if (sAction == sStart) {
+                    m_iSocketMode = SOCKET_MODE_HOST
                     processStartSession(iSessionID)
                 } else
                 if (sAction == sJoin) {
-                    processJoin (iSessionID)
+                    m_iSocketMode = SOCKET_MODE_GUEST
+                    processJoinSession (iSessionID)
                 }
             }
             // else do nothing
@@ -248,6 +270,27 @@ class MainActivity : AppCompatActivity() {
                 intent.putExtra (NICKNAME_KEY, m_sNickname)
                 startActivityForResult(intent, REQUEST_CODE_GET_NICKNAME)
             }
+            R.id.menu_end_chatter -> {
+                //..... Shutdown Chatter Session
+                if (m_iSocketMode == SOCKET_MODE_HOST) {
+                    //..... Any Guest still connected?
+                    val iGuests = netViewModel.countGuests()
+//                    if (iGuests > 0) {
+//                    //    .....Confirm if it is OK to shown down this sesstion
+//                    //    ..... Start the confirmation activity
+//                    }
+                    // else {
+                        netViewModel.shutdownHost(this, m_sGameID, m_sNickname)
+//                        //..... Wait 1 seconds to let the HTTP operation complete
+//                        sleep(1000)
+//                        finishAffinity()
+                    //}
+                }
+                else //..... SOCKET_MODE_GUEST assumed
+                {
+                        finish()
+                }
+            }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -258,7 +301,7 @@ class MainActivity : AppCompatActivity() {
     fun processStartSession (iSessionID: Int) {
 
         //..... Remember iSessionID from the Join Button is one-relative
-        val iIndex = iSessionID - 1
+        //val iIndex = iSessionID - 1
 
         // (1)  Do URL=http://www.machida.com/cgi-bin/addhost2.pl?Game=RumNet+HOST=HostName****+ADDR=aaabbbcccddd+PORT=8080
         // (2)  Begin socket listen
@@ -266,18 +309,20 @@ class MainActivity : AppCompatActivity() {
         // (4)  Get guest's NickName and add it to the bulletin board
         //      http://www.machida.com/cgi-bin/addguest2.pl?Game=RumNet+HOST=<Host name>+GUEST=<<GuestName>
         //
+        //netViewModel.addHost (this, m_sGameID, m_sNickname, iSessionID)
         netViewModel.addHost (this, m_sGameID, m_sNickname, iSessionID)
 //        val sessionRecord = netViewModel.m_sessionTable[iIndex]
 //        val sHostIpAdress = sessionRecord.sessionHostIpAddressLocal
 //        val iPort = sessionRecord.sessionHostPortNumber
 //
-//        //..... Connect to Server
-//        netViewModel.connectToServer(sHostIpAdress, iPort)
-
+        //..... Start as a Server
+        m_textMessageIn.text = "Host started ... Waiting Guest to connect ..."
+        //netViewModel.startServer()
+        netViewModel.startServerThread ()
 
     }
 
-    fun processJoin (iSessionID: Int) {
+    fun processJoinSession (iSessionID: Int) {
 
         //..... Remember iSessionID from the Join Button is one-relative
         val iIndex = iSessionID - 1
@@ -290,20 +335,33 @@ class MainActivity : AppCompatActivity() {
         val iPort = sessionRecord.sessionHostPortNumber
 
         //..... Connect to Server
-        netViewModel.connectToServer(sHostIpAdress, iPort)
+        //netViewModel.connectToServer(sHostIpAdress, iPort)
+        netViewModel.connectToServer(iIndex)
 
 
     }
 
     fun onClickButtonSend (view: View) {
 
-        val sMessage = m_editMessageOut.getText().toString()
-        //..... Connect to Server using the NetViewModel function
-        netViewModel.sendMessage(sMessage)
+        var sMessage = m_sNickname + ": "
+        sMessage = sMessage + m_editMessageOut.getText().toString()
+        //..... Use different sendMessage depending on whether Host or Guest
+        if (m_iSocketMode == SOCKET_MODE_HOST) {
+            netViewModel.broadcastMessage(sMessage, MESSAGE_HOST_ORIGINATED)
+        } else {
+            netViewModel.sendMessage(sMessage)
+        }
         //..... Don't forget to erase the editMessage
         m_editMessageOut.setText ("")
 
     }
-
+//
+//    override fun onStop() {
+//        super.onStop()
+//
+//        if (m_iSocketMode == SOCKET_MODE_HOST) {
+//            netViewModel.removeHost(this, m_sGameID, m_sNickname)
+//        }
+//    }
 
 }

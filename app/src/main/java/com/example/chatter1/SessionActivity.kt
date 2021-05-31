@@ -7,7 +7,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import io.realm.Realm
 import kotlinx.android.synthetic.main.session_content.*
 import kotlinx.android.synthetic.main.session_one.view.*
 
@@ -18,7 +17,7 @@ class SessionActivity : AppCompatActivity() {
 
     //var netViewModel = NetViewModel()
     lateinit var netViewModel : NetViewModel
-    private lateinit var realm: Realm
+    //private lateinit var realm: Realm
 
     //..... Result of unformatting m_sHttpBuffer
     var m_sHttpBuffer = ""
