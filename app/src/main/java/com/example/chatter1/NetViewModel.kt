@@ -1,7 +1,5 @@
 package com.example.chatter1
 
-//..... 2021/04/22: the following 2 statements added when viewModelScope.launch {} is coded
-
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.os.Handler
@@ -22,7 +20,6 @@ import java.net.InetAddress
 import java.net.NetworkInterface.*
 import java.net.ServerSocket
 import java.net.Socket
-import java.net.SocketException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.concurrent.thread
@@ -38,7 +35,6 @@ const val MESSAGE_KEY_OUT = "message_out"
 const val MESSAGE_HOST_ORIGINATED = 999
 //const val MESSAGE_BROADCAST = 100
 //const val MESSAGE_ORIGINAL = 0
-
 
 //..... Constants for SOCKET operation
 const val SOCKET_PORT = 8080
@@ -64,8 +60,6 @@ class NetViewModel : ViewModel() {
     //..... Message
     val netData = MutableLiveData<String>()
 
-    //val httpBuffer = MutableLiveData<String>()
-
     //..... Socket connect and disconnect
     val socketStatusCode = MutableLiveData<String>()
 
@@ -81,12 +75,8 @@ class NetViewModel : ViewModel() {
     //      To be deleted when startServer() Coroutine function is removed
     var m_sGuestIpAddress = ""
 
-    //var m_guestInput = MutableList (MAX_GUESTS) { InputStream() }
     var m_guestInput:  Array<BufferedReader?> = Array(MAX_GUESTS) { null }
     var m_guestOutput: Array<PrintWriter?> = Array(MAX_GUESTS) { null }
-
-    //var m_iOriginator = MESSAGE_BROADCAST
-
 
     //==============================================================================================
     //  Data for Guest Mode
@@ -110,13 +100,11 @@ class NetViewModel : ViewModel() {
     var m_iError = 0
     var m_iSessions = 0                 //Current number of sessions in progress
 
-    //var m_iIpAddressClient = Array<Int>(4) {0}
     var m_sIpAddressClient = ""
     //..... m_sLocalIpAddress is set in constructUrlAddHost(...) by addHost(...)
     var m_sLocalIpAddress = ""
 
     //..... 2021/05/06: Changed due to use expandable List
-    //var m_sessionTable = MutableList(MAX_SESSIONS) {SessionRecord()}
     var m_sessionTable: MutableList<SessionRecord> = mutableListOf<SessionRecord>()
     var m_sHostName = ""
     var m_sHostIpAddress = ""
@@ -153,46 +141,6 @@ class NetViewModel : ViewModel() {
         }
     }
 
-
-//
-//    fun getHttpSessionData (sGameID: String) {
-//        viewModelScope.launch {
-//            m_sGameID = sGameID
-//            val sURL = HTTP_SESSION_SHOW + sGameID
-//            httpBuffer.value = getHttpResponse (sURL)
-//        }
-//    }
-//
-//    suspend fun getHttpResponse (sUrl: String) : String {
-//
-//        var sResponse = ""
-//
-//        withContext(Dispatchers.IO) {
-//            val url = URL(sUrl)
-//            sResponse = url.readText(Charset.defaultCharset())
-//        }
-//        return sResponse
-//    }
-//
-//    //..... 2021/04/22: the URL function in the following copy from the Gassner's tutorial also gets a warning message.
-//    //      I decided to ignore the warning.
-//    suspend fun getHttpResponse2 (sUrl: String) : String {
-//        return withContext(Dispatchers.IO) {
-//            val url = URL(sUrl)
-//            return@withContext url.readText(Charset.defaultCharset())
-//        }
-//    }
-//
-//
-//    fun getSussionCount () : Int {
-//        if (m_iSessions == 0) {
-//            return m_iSessions
-//        }
-//        else {
-//            return m_iSessions
-//        }
-//    }
-
     fun getHttpSessionData(context: AppCompatActivity, sGameID: String) {
 
         m_sGameID = sGameID
@@ -221,36 +169,6 @@ class NetViewModel : ViewModel() {
         // Add the request to the RequestQueue.
         queue.add(stringRequest)
     }
-//
-//    fun buildSessionTable (context: AppCompatActivity, sGameID: String) {
-//
-//        m_sGameID = sGameID
-//
-//        setSessionStatus(SESSION_TABLE_STARTED)
-//
-//        // Instantiate the RequestQueue.
-//        val queue = Volley.newRequestQueue(context)
-//        val sURL = HTTP_SESSION_SHOW + m_sGameID
-//
-//        // Request a string response from the provided URL.
-//        val stringRequest = StringRequest(
-//            //..... The following statement changed to remove syntax error per stack overflow
-//            //      https://stackoverflow.com/questions/32228877/cannot-resolve-symbol-method
-//            //DownloadManager.Request.Method.GET, sURL,
-//            Request.Method.GET, sURL,
-//            { response ->
-//                m_sHttpBuffer = response
-//                unformatSessionData(m_sHttpBuffer)
-//                //..... move the unformatted session data to NetViewData
-//                //moveSessionData()
-//                setSessionStatus(SESSION_TABLE_COMPLETED)
-//            },
-//            { m_sHttpBuffer = sURL + "<-- didn't work!" })
-//
-//        // Add the request to the RequestQueue.
-//        queue.add(stringRequest)
-//    }
-
 
     ///////////////////////////////////////////////////////////////////////////////////////
     //
@@ -326,14 +244,6 @@ class NetViewModel : ViewModel() {
         sessionRecord = SessionRecord()
         m_sessionTable.add(sessionRecord)
     }
-//
-//    fun unformatIpAddress(sIpAddress: String, iIpAddress: Array<Int>) {
-//        for (i in 0..3) {
-//            //m_iIpAddressClient[i] = sBuffer.substring (iIpStart, iIpStart+3).toInt()
-//            val sData = sIpAddress.substring(i * 3, (i + 1) * 3)
-//            iIpAddress[i] = sData.toInt()
-//        }
-//    }
 
     fun unformatIpAddress(sString: String): String {
 
@@ -449,30 +359,6 @@ class NetViewModel : ViewModel() {
         ).hostAddress
     }
 
-    fun getMyLocalIpAddress(): String? {
-        try {
-            val en = getNetworkInterfaces()
-            while (en
-                            .hasMoreElements()
-            ) {
-                val intf = en.nextElement()
-                val enumIpAddr = intf.inetAddresses
-                while (enumIpAddr
-                                .hasMoreElements()
-                ) {
-                    val inetAddress = enumIpAddr.nextElement()
-                    if (!inetAddress.isLoopbackAddress) {
-                        return inetAddress.hostAddress.toString()
-                    }
-                }
-            }
-        } catch (ex: SocketException) {
-
-            return (ex.toString());
-        }
-        return null
-    }
-
     //..... normalizedName adds trailing "*" to make the name 12 characters
     //      Example: HostName -> HostName****
     fun normalizeName(sName: String): String {
@@ -515,14 +401,11 @@ class NetViewModel : ViewModel() {
 
         val sServerIpAddress = m_sessionTable[iSessionID].sessionHostIpAddressLocal
         val iServerPort = m_sessionTable[iSessionID].sessionHostPortNumber
-//        m_sHostName = m_sessionTable[iSessionID].sessionHostName
-//        m_sHostName = m_sHostName.trimEnd()
 
         viewModelScope.launch {
             val sMessage = getSocketData(sServerIpAddress, iServerPort, sNickname)
             //..... 2021/03/18: The following statement will clear all the previous messages if present.
             //                  Consider if this is OK or preserve the previous messages.
-            //netData.value = sResult
             appendToNetData(sMessage)
         }
     }
@@ -530,9 +413,6 @@ class NetViewModel : ViewModel() {
     suspend fun getSocketData(sServerIpAddress: String, iServerPort: Int, sNickname : String): String {
         var sData: String
 
-//        m_sHostName = m_sessionTable[0].sessionHostName
-//        m_sHostIpAddress = m_sessionTable[0].sessionHostIpAddressLocal
-//        val sPortAddress = m_sessionTable[0].sessionHostPortNumber
         sData = withContext(Dispatchers.IO) {
             //..... NOTE: THe following statement will hang forever if the Server is not running.
             //          A new process to handle such case should be implemented.
@@ -593,18 +473,8 @@ class NetViewModel : ViewModel() {
             val bundle = Bundle()
             while (m_bOkToTryReadSocket) {
                 try {
-                    val sMessage: String = input.readLine()
                     //..... Incoming sMessage now shows who is sending the sMessage
-                    //sMessage = "Server: " + sMessage
-                    //..... The following statement will not compile
-                    //runOnUiThread(Runnable { tvMessages.append("server: $message\n") })
-                    //..... The following statement causes a runtime failure
-                    //netData.value = netData.value + message + "\n"
-//                    bundle.putString(MESSAGE_KEY, sMessage)
-//                    Message().also {
-//                        it.data = bundle
-//                        handler.sendMessage(it)
-//                    }
+                    val sMessage: String = input.readLine()
                     passMessageToMainThread (sMessage)
                 } catch (e: Exception) {
                     //..... Is this exception the result of the DISCONNECT Button?
@@ -641,11 +511,6 @@ class NetViewModel : ViewModel() {
             output.flush()
 
             //..... Send sMessage to UI via bundle
-//            bundle.putString(MESSAGE_KEY, sMessage)
-//            Message().also {
-//                it.data = bundle
-//                handler.sendMessage(it)
-//            }
             putBundleString(MESSAGE_KEY, sMessage)
         }
     }
@@ -681,8 +546,6 @@ class NetViewModel : ViewModel() {
 
     fun startServerThread(iSessionID: Int, sHostName : String) {
 
-        //val bundle = Bundle()
-
         val serverSocket : ServerSocket
         var guestSocket = Socket()
         var iError = 0
@@ -712,7 +575,6 @@ class NetViewModel : ViewModel() {
                     if (iResult < 0) {
                         //..... Do not accept this socket; m_guestSockets[] are full
                         iError = -1
-                        //sError = "Err001: Too many guests; " + m_sGuestIpAddress + " NOT Accepted\n"
                         sError = "Err001: Too many guests; " + sGuestIpAddress + " NOT Accepted\n"
                     }
                     //..... Guest connection is made
@@ -727,8 +589,6 @@ class NetViewModel : ViewModel() {
                     passMessageToMainThread (sMessage)
                 } else {
                     //..... Successfully accepted this Guest
-//                    val inetAddress = guestSocket.inetAddress
-//                    sGuestIpAddress = inetAddress.hostAddress
                     sMessage = "Connected to " + sGuestIpAddress
                     passMessageToMainThread (sMessage)
 
@@ -736,7 +596,6 @@ class NetViewModel : ViewModel() {
                     val iGuest = m_iGuestSockets - 1
                     //..... welcomeGuest sends a welcome message and starts readMessage (iGuest)
                     //      to start the input operation
-                    //welcomeGuest(iGuest)
                     readGuestMessage (iGuest)
                 }
 
@@ -760,207 +619,6 @@ class NetViewModel : ViewModel() {
             it.data = bundle
             handler.sendMessage(it)
         }
-    }
-
-    fun startServerSocket2() {
-
-        var sData = ""
-
-        thread (start = true) {
-            //..... Do NOT call appendToNetData in this function.
-            //      Doing so will result in runtime error.
-
-            //..... NOTE: THe following statement will hang forever if the Server is not running.
-            //          A new process to handle such case should be implemented.
-            //          For example, pass "Connecting ..." to UI via Bundle to notify the user
-            //          and erase with the "Connected ... " message with the return.
-            var iError = 0
-            var sError = ""
-            val guestSocket: Socket
-            val guestIpAddress = ""
-            try {
-                m_serverSocket = ServerSocket(SOCKET_PORT)
-                //..... Show Server Mode started
-                sData = "Starting Server mode ...\n"
-            } catch (e: IOException) {
-                iError = -102
-                sData = "Err102: Could not start Server Socket\n"
-            }
-        }
-
-    }
-
-    fun startServer2() {
-        thread(start = true) {
-
-            var iError = 0
-            var sError = "OK"
-            var sData = ""
-            var guestSocket = Socket()
-            try {
-                m_serverSocket = ServerSocket(SOCKET_PORT)
-                //..... Show Server Mode started
-                sData = "Starting Server mode ..."
-                //..... Listen and accept connection from a Guest
-                try {
-                    guestSocket = m_serverSocket.accept()
-                    val iResult = addGuestSocket(guestSocket)
-                    if (iResult < 0) {
-                        //..... Do not accept this socket; the m_guestSoclets[] are full
-                        iError = -1
-                        sError = "Err001: Max number of guests exceeded"
-                    }
-                } catch (e: IOException) {
-                    iError = -101
-                    sError = "Err101: Failed to aceot guest socket"
-                }
-            } catch (e: IOException) {
-                iError = -102
-                sError = "Err102: Could not open Server Socket"
-            }
-            if (iError < 0) {
-                if (iError == -1) {
-                    //declineAccept (guestSocket)
-                }
-                //appendToNetData(sError)
-                sData = sError
-            } else {
-                val inetAddress = guestSocket.inetAddress
-                m_sGuestIpAddress = inetAddress.hostAddress
-                sData = "Connected to " + m_sGuestIpAddress + "\n"
-                //..... Accept this guest
-                val iGuest = m_iGuestSockets - 1
-                //welcomeGuest (iGuest)
-                readGuestMessage (iGuest)
-            }
-        }
-    }
-
-    fun acceptGuestConnection(): String {
-
-        var sData = ""
-        var iError = 0
-        var sError = ""
-        var guestSocket = Socket()
-        val guestIpAddress = ""
-        val bundle = Bundle()
-
-        thread (start = true) {
-            //..... Listen and accept a connection from a Guest
-            try {
-                guestSocket = m_serverSocket.accept()
-                //..... add this guestSocket to the guest socket table
-                //      NOTE: addGuestSocket not only add this guest socket to the table
-                //      but also creates input & output objects for this Guest
-                val iResult = addGuestSocket(guestSocket)
-                if (iResult < 0) {
-                    //..... Do not accept this socket; m_guestSockets[] are full
-                    iError = -1
-                    sError = "Err001: Too many guests; " + m_sGuestIpAddress + " NOT Accepted"
-                }
-                //..... Guest connection is made
-            } catch (e: IOException) {
-                iError = -101
-                sError = "Err101: Failed to accept guest socket"
-            }
-
-            if (iError < 0) {
-                sData = sError
-
-            } else {
-                //appendToNetData("Host Mode started...")
-                val inetAddress = guestSocket.inetAddress
-                m_sGuestIpAddress = inetAddress.hostAddress
-                sData = "Connected to " + m_sGuestIpAddress + "\n"
-                //..... Accept this guest
-                val iGuest = m_iGuestSockets - 1
-                //..... welcomeGuest sends a welcome message and starts readMessage (iGuest)
-                //      to start the input operation
-                //welcomeGuest(iGuest)
-                readGuestMessage (iGuest)
-            }
-        }
-
-        val sMessage = sData
-        bundle.putString(MESSAGE_KEY, sMessage)
-        Message().also {
-            it.data = bundle
-            handler.sendMessage(it)
-        }
-        return sData
-    }
-
-    fun startServer() {
-
-        viewModelScope.launch {
-            val sMessage = startServerSocket()
-            appendToNetData(sMessage)
-        }
-
-    }
-
-    suspend fun startServerSocket(): String {
-        var sData = ""
-
-        sData = withContext(Dispatchers.IO) {
-            //..... Do NOT call appendToNetData in this function.
-            //      Doing so will result in runtime error.
-
-            //..... NOTE: THe following statement will hang forever if the Server is not running.
-            //          A new process to handle such case should be implemented.
-            //          For example, pass "Connecting ..." to UI via Bundle to notify the user
-            //          and erase with the "Connected ... " message with the return.
-            var iError = 0
-            var sError = ""
-            var guestSocket = Socket()
-            var sGuestIpAddress = ""
-            try {
-                m_serverSocket = ServerSocket(SOCKET_PORT)
-                //..... Show Server Mode started
-                //      The following notification is now displayed when the User selects to start a new session
-                //      processStartSession (iSessionID) in MainActivity because creating m_serverSocket does not fail.
-                //sData = "Starting Server mode ..."
-                try {
-                    guestSocket = m_serverSocket.accept()
-                    //..... add this guestSocket to the guest socket table
-                    //      NOTE: addGuestSocket not only add this guest socket to the table
-                    //      but also creates input & output objects for this Guest
-                    val iResult = addGuestSocket(guestSocket)
-                    if (iResult < 0) {
-                        //..... Do not accept this socket; m_guestSockets[] are full
-                        iError = -1
-                        sError = "Err001: Too many guests; " + m_sGuestIpAddress + " NOT Accepted\n"
-                    }
-                    //..... Guest connection is made
-                } catch (e: IOException) {
-                    iError = -101
-                    sError = "Err101: Failed to accept guest socket\n"
-                }
-            } catch (e: IOException) {
-                iError = -102
-                sError = "Err102: Could not start Server Socket\n"
-            }
-
-            if (iError < 0) {
-                sData = sError
-            } else {
-                //..... Successfully accepted this Guest
-                val inetAddress = guestSocket.inetAddress
-                sGuestIpAddress = inetAddress.hostAddress
-                sData = "Connected to " + sGuestIpAddress
-                m_sGuestIpAddress = sGuestIpAddress
-                //..... Accept this guest
-                val iGuest = m_iGuestSockets - 1
-                //..... welcomeGuest sends a welcome message and starts readMessage (iGuest)
-                //      to start the input operation
-                //welcomeGuest(iGuest)
-                readGuestMessage (iGuest)
-
-            }
-            return@withContext sData
-        }
-
-        return sData
     }
 
     fun addGuestSocket(guestSocket: Socket): Int {
@@ -1016,7 +674,7 @@ class NetViewModel : ViewModel() {
 
     fun welcomeGuest(iGuest: Int) {
 
-        val sMessage = m_sHostName + ": Welcome" + m_sGuestName[iGuest]
+        val sMessage = m_sHostName + ": Welcome " + m_sGuestName[iGuest]
         broadcastMessage (sMessage, MESSAGE_HOST_ORIGINATED)
 
     }
@@ -1042,13 +700,12 @@ class NetViewModel : ViewModel() {
 
         thread(start = true) {
             val output = m_guestOutput[iGuest]
-//            val bundle = Bundle()
             //..... Send the message
             output?.write(sMessage)
             //..... 2021/03/08: Must put a CR to complete sending the message
             output?.println()
             output?.flush()
-            //..... This is done on broadcastMessage()
+            //..... This is done once in broadcastMessage()
             //putBundleString(MESSAGE_KEY, sMessage)
         }
     }
