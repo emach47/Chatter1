@@ -50,6 +50,12 @@ const val SOCKET_LOST = "Lost"
 
 const val MAX_GUESTS = 3
 
+const val LOGIN_HELLO = "@HELLO"
+const val LOGIN_RESULT_OK = 1
+const val LOGIN_RESULT_REGULAR_MESSAGE = 0
+const val LOGIN_RESULT_ERROR = -1
+
+
 class NetViewModel : ViewModel() {
 
     //==============================================================================================
@@ -505,15 +511,15 @@ class NetViewModel : ViewModel() {
     //      Socket operations (Guest)
     //==================================================================================================================
 
-    fun connectToServer(iSessionID: Int) {
+    fun connectToServer(iSessionID: Int, sNickname: String) {
 
         val sServerIpAddress = m_sessionTable[iSessionID].sessionHostIpAddressLocal
         val iServerPort = m_sessionTable[iSessionID].sessionHostPortNumber
-        m_sHostName = m_sessionTable[iSessionID].sessionHostName
-        m_sHostName = m_sHostName.trimEnd()
+//        m_sHostName = m_sessionTable[iSessionID].sessionHostName
+//        m_sHostName = m_sHostName.trimEnd()
 
         viewModelScope.launch {
-            val sMessage = getSocketData(sServerIpAddress, iServerPort)
+            val sMessage = getSocketData(sServerIpAddress, iServerPort, sNickname)
             //..... 2021/03/18: The following statement will clear all the previous messages if present.
             //                  Consider if this is OK or preserve the previous messages.
             //netData.value = sResult
@@ -521,22 +527,12 @@ class NetViewModel : ViewModel() {
         }
     }
 
-    fun connectToServer(sServerIpAddress: String, iServerPort: Int) {
-        viewModelScope.launch {
-            val sMessage = getSocketData(sServerIpAddress, iServerPort)
-            //..... 2021/03/18: The following statement will clear all the previous messages if present.
-            //                  Consider if this is OK or preserve the previous messages.
-            //netData.value = sResult
-            appendToNetData(sMessage)
-        }
-    }
-
-    suspend fun getSocketData(sServerIpAddress: String, iServerPort: Int): String {
+    suspend fun getSocketData(sServerIpAddress: String, iServerPort: Int, sNickname : String): String {
         var sData: String
 
-        m_sHostName = m_sessionTable[0].sessionHostName
-        m_sHostIpAddress = m_sessionTable[0].sessionHostIpAddressLocal
-        val sPortAddress = m_sessionTable[0].sessionHostPortNumber
+//        m_sHostName = m_sessionTable[0].sessionHostName
+//        m_sHostIpAddress = m_sessionTable[0].sessionHostIpAddressLocal
+//        val sPortAddress = m_sessionTable[0].sessionHostPortNumber
         sData = withContext(Dispatchers.IO) {
             //..... NOTE: THe following statement will hang forever if the Server is not running.
             //          A new process to handle such case should be implemented.
@@ -550,6 +546,8 @@ class NetViewModel : ViewModel() {
             input = BufferedReader(InputStreamReader(sSocket.getInputStream()))
             sData = "Connected to " + sServerIpAddress + " (" + iServerPort.toString() + ")"
             putBundleString(SOCKET_STATUS_KEY, SOCKET_CONNECTEDED)
+            //..... Let the server know who I am
+            loginToServer(sNickname)
             //..... Start a forever loop to get incoming messages from the Server
             m_bOkToTryReadSocket = true
             readMessage()
@@ -607,7 +605,7 @@ class NetViewModel : ViewModel() {
 //                        it.data = bundle
 //                        handler.sendMessage(it)
 //                    }
-                    passMessage (sMessage)
+                    passMessageToMainThread (sMessage)
                 } catch (e: Exception) {
                     //..... Is this exception the result of the DISCONNECT Button?
                     if (m_bOkToTryReadSocket) {
@@ -652,6 +650,22 @@ class NetViewModel : ViewModel() {
         }
     }
 
+    fun loginToServer(sNickname: String) {
+
+        thread(start = true) {
+
+            val sMessage = sNickname + ": " + LOGIN_HELLO
+            //..... Send the message
+            output.write(sMessage)
+            //..... 2021/03/08: Must put a CR to complete sending the message
+            output.println()
+            output.flush()
+
+            //..... This message is not shown to the User
+            //putBundleString(MESSAGE_KEY, sMessage)
+        }
+    }
+
     fun closeSocket(socket: Socket) {
 
         m_bOkToTryReadSocket = false
@@ -665,9 +679,9 @@ class NetViewModel : ViewModel() {
     //      Socket operations (Server)
     //==================================================================================================================
 
-    fun startServerThread() {
+    fun startServerThread(iSessionID: Int, sHostName : String) {
 
-        val bundle = Bundle()
+        //val bundle = Bundle()
 
         val serverSocket : ServerSocket
         var guestSocket = Socket()
@@ -676,14 +690,15 @@ class NetViewModel : ViewModel() {
         var sGuestIpAddress = ""
         var sMessage = ""
 
+        val iSessionIndex = iSessionID - 1
+        //..... Really need to create a sessionTable[iSessionIndex]
+        m_sHostName = sHostName
+
         //m_serverSocket = ServerSocket(SOCKET_PORT)
         serverSocket = ServerSocket(SOCKET_PORT)
-        //..... Show Server Mode started
-        //      The following notification is now displayed when the User selects to start a new session
-        //      processStartSession (iSessionID) in MainActivity because creating m_serverSocket does not fail.
-        //sData = "Starting Server mode ..."
+
         thread (start = true) {
-            //..... Start accept loop for multiple clients
+            //..... Start accept loop for clients
             while (true) {
 
                 try {
@@ -709,13 +724,13 @@ class NetViewModel : ViewModel() {
                 if (iError < 0) {
                     sMessage = sError
                     //..... Show the error message to the UI thread
-                    passMessage (sMessage)
+                    passMessageToMainThread (sMessage)
                 } else {
                     //..... Successfully accepted this Guest
 //                    val inetAddress = guestSocket.inetAddress
 //                    sGuestIpAddress = inetAddress.hostAddress
-                    sMessage = "Connected to " + sGuestIpAddress + "\n"
-                    passMessage (sMessage)
+                    sMessage = "Connected to " + sGuestIpAddress
+                    passMessageToMainThread (sMessage)
 
                     //..... Start the read operation for this Guest
                     val iGuest = m_iGuestSockets - 1
@@ -730,7 +745,13 @@ class NetViewModel : ViewModel() {
 
 }
 
-    fun passMessage (sMessage: String) {
+    fun getHostName (iSessionID: Int) : String {
+
+        val sHostName = m_sessionTable[iSessionID].sessionHostName
+        return sHostName
+    }
+
+    fun passMessageToMainThread (sMessage: String) {
 
         val bundle = Bundle()
 
@@ -995,8 +1016,9 @@ class NetViewModel : ViewModel() {
 
     fun welcomeGuest(iGuest: Int) {
 
-        sendGuestMessage (iGuest, "Welcome")
-        readGuestMessage (iGuest)
+        val sMessage = m_sHostName + ": Welcome" + m_sGuestName[iGuest]
+        broadcastMessage (sMessage, MESSAGE_HOST_ORIGINATED)
+
     }
 
     fun broadcastMessage(sMessage: String, iGuestOriginated: Int) {
@@ -1043,15 +1065,24 @@ class NetViewModel : ViewModel() {
                 while (m_bOkToTryReadSocket) {
                     try {
                         sMessage = input.readLine()
-                        //..... sMessage is now preceded by Nickname
-                        getGuestNickname (sMessage, iGuest)
-                        bundle.putString(MESSAGE_KEY, sMessage)
-                        Message().also {
-                            it.data = bundle
-                            handler.sendMessage(it)
+                        //..... Recognize & store this Guest Nickname if we haven't done it already
+                        getGuestNickname(sMessage, iGuest)
+                        //..... If this is the first Login message from the Guest, handle it differently
+                        val iResult = checkLoginMessage (sMessage)
+                        if (iResult == LOGIN_RESULT_OK) {
+                            welcomeGuest(iGuest)
                         }
-                        //..... Broadcast sMessage to the Guests exclusing the originator
-                        broadcastMessage(sMessage, iGuest)
+                        else
+                        {
+                            //..... iResult == LOGIN_RESULT_REGULAR_MESSAGE)
+                            bundle.putString(MESSAGE_KEY, sMessage)
+                            Message().also {
+                                it.data = bundle
+                                handler.sendMessage(it)
+                            }
+                            //..... Broadcast sMessage to the Guests exclusing the originator
+                            broadcastMessage(sMessage, iGuest)
+                        }
                     } catch (e: Exception) {
                         //..... Is this exception the result of the DISCONNECT Button?
                         if (m_bOkToTryReadSocket) {
@@ -1067,6 +1098,25 @@ class NetViewModel : ViewModel() {
                 }
             }
         }
+    }
+
+    fun checkLoginMessage (sMessage: String) : Int {
+
+        var iResult = 0
+        var sMessageBody = ""
+        val iLength = sMessage.length - 1
+        for (i in 0..iLength) {
+            if (sMessage[i] == ':') {
+                sMessageBody = sMessage.substring (i+2, iLength+1)
+                break
+            }
+        }
+
+        if (sMessageBody == LOGIN_HELLO) {
+            iResult = 1
+        }
+
+        return iResult
     }
 
     fun getGuestNickname (sMessage : String, iGuest : Int) {
@@ -1092,6 +1142,7 @@ class NetViewModel : ViewModel() {
 
         return sNickname
     }
+
     fun shutdownHost(context: AppCompatActivity, sGameID: String, sHostName: String) {
 
         removeHost (context, sGameID, sHostName)

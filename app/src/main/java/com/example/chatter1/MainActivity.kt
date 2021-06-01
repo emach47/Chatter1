@@ -318,7 +318,7 @@ class MainActivity : AppCompatActivity() {
         //..... Start as a Server
         m_textMessageIn.text = "Host started ... Waiting Guest to connect ..."
         //netViewModel.startServer()
-        netViewModel.startServerThread ()
+        netViewModel.startServerThread (iSessionID, m_sNickname)
 
     }
 
@@ -336,8 +336,7 @@ class MainActivity : AppCompatActivity() {
 
         //..... Connect to Server
         //netViewModel.connectToServer(sHostIpAdress, iPort)
-        netViewModel.connectToServer(iIndex)
-
+        netViewModel.connectToServer(iIndex, m_sNickname)
 
     }
 
