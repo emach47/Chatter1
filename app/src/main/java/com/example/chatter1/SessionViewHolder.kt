@@ -13,6 +13,7 @@ class SessionViewHolder (itemView: View): RecyclerView.ViewHolder (itemView) {
     var textSessionGroup: TextView? = null
     var textSessionMembers: TextView? = null
     var textSessionHostName: TextView? = null
+    var textSessionGuestName = Array<TextView?>(MAX_GUESTS) {null}
     var buttonSessionAction: Button? = null
 
     init {
@@ -23,6 +24,9 @@ class SessionViewHolder (itemView: View): RecyclerView.ViewHolder (itemView) {
         textSessionGroup = itemView.textSessionGroup
         textSessionMembers = itemView.textSessionMembers
         textSessionHostName = itemView.textSessionHostName
+        textSessionGuestName[0] = itemView.textSessionGuestName1
+        textSessionGuestName[1] = itemView.textSessionGuestName2
+        textSessionGuestName[2] = itemView.textSessionGuestName3
         buttonSessionAction = itemView.buttonSessionAction
     }
 }

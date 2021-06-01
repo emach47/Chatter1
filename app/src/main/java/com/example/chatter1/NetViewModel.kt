@@ -78,9 +78,9 @@ class NetViewModel : ViewModel() {
     var m_guestInput:  Array<BufferedReader?> = Array(MAX_GUESTS) { null }
     var m_guestOutput: Array<PrintWriter?> = Array(MAX_GUESTS) { null }
 
-    //==============================================================================================
+    //--------------------------------------------------------------------------------------------
     //  Data for Guest Mode
-    //==============================================================================================
+    //--------------------------------------------------------------------------------------------
     //..... m_socket for the Guest mode
     //      It is used (only once) to close the socket in readMessage() when the socket to the Host is closed
     lateinit var m_socket: Socket
@@ -93,7 +93,7 @@ class NetViewModel : ViewModel() {
     var m_bOkToTryReadSocket = true
 
     //--------------------------------------------------------------------------------------------
-    //  Data area for Session Infoamation
+    //  Data area for Session Information
     //--------------------------------------------------------------------------------------------
     var m_sGameID = ""
     var m_iSessionTableStatus = 0
@@ -107,10 +107,15 @@ class NetViewModel : ViewModel() {
     //..... 2021/05/06: Changed due to use expandable List
     var m_sessionTable: MutableList<SessionRecord> = mutableListOf<SessionRecord>()
     var m_sHostName = ""
-    var m_sHostIpAddress = ""
+//    var m_sHostIpAddress = ""
 
     var m_sHttpBuffer = ""
+    lateinit var m_context : AppCompatActivity
 
+    //==============================================================================================
+    //  handler object to receive message from readMessage(), sendMessage(),
+    //  readGuestMessage(iGuest), sendGuestMessage(iGuest, sMessage)
+    //==============================================================================================
     private val handler = object : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
             val bundle = msg.data
@@ -141,8 +146,13 @@ class NetViewModel : ViewModel() {
         }
     }
 
+    //==============================================================================================
+    //  HTTP functions to access and update Internet bulletin board
+    //==============================================================================================
     fun getHttpSessionData(context: AppCompatActivity, sGameID: String) {
 
+        //..... Save data to be used later
+        m_context = context
         m_sGameID = sGameID
 
         setSessionStatus(SESSION_TABLE_STARTED)
@@ -325,6 +335,46 @@ class NetViewModel : ViewModel() {
         var sPort="0000" + SOCKET_PORT.toString()
         sPort = sPort.takeLast(4)
         sUrl = sUrl + "+ADDR=" + sIpAddressNormalized + "+PORT=" + sPort
+
+        return sUrl
+    }
+
+    fun addGuest (context: AppCompatActivity, sGameID: String, sHostName: String, sGuestName: String) {
+
+        val sUrl = constructUrlAddGuest(context, sGameID, sHostName, sGuestName)
+        //..... Comment out during testing
+        postURL(context, sUrl)
+    }
+
+    fun constructUrlAddGuest(context: AppCompatActivity, sGameID: String, sHostName: String, sGuestName : String): String {
+
+        //..... Build the following URL
+        //http://www.machida.com/cgi-bin/addguest2.pl?Game=RumNet+HOST=TestHost0001+GUEST=Guest001****
+        var sUrl = HTTP_ADD_GUEST + sGameID
+        var sNameNormalized = normalizeName(sHostName)
+        sUrl = sUrl + "+HOST=" + sNameNormalized
+        sNameNormalized = normalizeName(sGuestName)
+        sUrl = sUrl + "+GUEST=" + sNameNormalized
+
+        return sUrl
+    }
+
+    fun removeGuest (context: AppCompatActivity, sGameID: String, sHostName: String, sGuestName: String) {
+
+        val sUrl = constructUrlRemoveGuest(context, sGameID, sHostName, sGuestName)
+        //..... Comment out during testing
+        postURL(context, sUrl)
+    }
+
+    fun constructUrlRemoveGuest(context: AppCompatActivity, sGameID: String, sHostName: String, sGuestName : String): String {
+
+        //..... Build the following URL
+        //http://www.machida.com/cgi-bin/addguest2.pl?Game=RumNet+HOST=TestHost0001+GUEST=Guest001****
+        var sUrl = HTTP_REMOVE_GUEST + sGameID
+        var sNameNormalized = normalizeName(sHostName)
+        sUrl = sUrl + "+HOST=" + sNameNormalized
+        sNameNormalized = normalizeName(sGuestName)
+        sUrl = sUrl + "+GUEST=" + sNameNormalized
 
         return sUrl
     }
@@ -602,13 +652,13 @@ class NetViewModel : ViewModel() {
             }
         }
 
-}
-
-    fun getHostName (iSessionID: Int) : String {
-
-        val sHostName = m_sessionTable[iSessionID].sessionHostName
-        return sHostName
     }
+//
+//    fun getHostName (iSessionID: Int) : String {
+//
+//        val sHostName = m_sessionTable[iSessionID].sessionHostName
+//        return sHostName
+//    }
 
     fun passMessageToMainThread (sMessage: String) {
 
@@ -642,35 +692,35 @@ class NetViewModel : ViewModel() {
 
         return m_iGuestSockets
     }
-
-    fun removeGuestSocket (iGuest: Int) : Int {
-
-        var iResult = 0
-        var iGuestTotal = m_iGuestSockets
-        //..... Do Range check (iGuest zero-relative) to avoid error condition
-        if (iGuest >= iGuestTotal) {
-            //..... Error: cannot remove this Guest
-            iResult = -1
-            return iResult
-        }
-        //..... Do I need to remove only the last entry?
-        if (iGuest == (iGuestTotal - 1)) {
-            //..... Yes, simply decrement m_iGuestSockets
-            iGuestTotal = iGuestTotal - 1
-            m_iGuestSockets = iGuestTotal
-            iResult = iGuestTotal
-            return iResult
-        }
-        //..... iGuest < (iGuest - 1)
-        for (i in iGuest..(iGuestTotal - 1)) {
-            m_guestSocket[i] = m_guestSocket[i+1]
-            m_sGuestName [i] = m_sGuestName [i+1]
-        }
-        iGuestTotal = iGuestTotal - 1
-        m_iGuestSockets = iGuestTotal
-        iResult = iGuestTotal
-        return iResult
-    }
+//
+//    fun removeGuestSocket (iGuest: Int) : Int {
+//
+//        var iResult = 0
+//        var iGuestTotal = m_iGuestSockets
+//        //..... Do Range check (iGuest zero-relative) to avoid error condition
+//        if (iGuest >= iGuestTotal) {
+//            //..... Error: cannot remove this Guest
+//            iResult = -1
+//            return iResult
+//        }
+//        //..... Do I need to remove only the last entry?
+//        if (iGuest == (iGuestTotal - 1)) {
+//            //..... Yes, simply decrement m_iGuestSockets
+//            iGuestTotal = iGuestTotal - 1
+//            m_iGuestSockets = iGuestTotal
+//            iResult = iGuestTotal
+//            return iResult
+//        }
+//        //..... iGuest < (iGuest - 1)
+//        for (i in iGuest..(iGuestTotal - 1)) {
+//            m_guestSocket[i] = m_guestSocket[i+1]
+//            m_sGuestName [i] = m_sGuestName [i+1]
+//        }
+//        iGuestTotal = iGuestTotal - 1
+//        m_iGuestSockets = iGuestTotal
+//        iResult = iGuestTotal
+//        return iResult
+//    }
 
     fun welcomeGuest(iGuest: Int) {
 
@@ -727,6 +777,7 @@ class NetViewModel : ViewModel() {
                         //..... If this is the first Login message from the Guest, handle it differently
                         val iResult = checkLoginMessage (sMessage)
                         if (iResult == LOGIN_RESULT_OK) {
+                            addGuest (m_context, m_sGameID, m_sHostName, m_sGuestName[iGuest])
                             welcomeGuest(iGuest)
                         }
                         else

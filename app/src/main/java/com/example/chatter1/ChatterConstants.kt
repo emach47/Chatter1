@@ -47,6 +47,8 @@ const val BYTE_BEGIN_SESSION_HOST_IP_ADDRESS_EXTERNAL = BYTE_BEGIN_SESSION_HOST_
 const val BYTE_SIZE_PLAYER_NAME = 12
 
 
-const val HTTP_SESSION_SHOW = "http://www.machida.com/cgi-bin/show2.pl?Game="
-const val HTTP_ADD_HOST = "http://www.machida.com/cgi-bin/addhost2.pl?Game="
-const val HTTP_REMOVE_HOST = "http://www.machida.com/cgi-bin/remhost2.pl?Game="
+const val HTTP_SESSION_SHOW     = "http://www.machida.com/cgi-bin/show2.pl?Game="
+const val HTTP_ADD_HOST         = "http://www.machida.com/cgi-bin/addhost2.pl?Game="
+const val HTTP_REMOVE_HOST      = "http://www.machida.com/cgi-bin/remhost2.pl?Game="
+const val HTTP_ADD_GUEST        = "http://www.machida.com/cgi-bin/addguest2.pl?Game="
+const val HTTP_REMOVE_GUEST     = "http://www.machida.com/cgi-bin/remguest2.pl?Game="

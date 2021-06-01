@@ -276,7 +276,7 @@ class MainActivity : AppCompatActivity() {
                     //..... Any Guest still connected?
                     val iGuests = netViewModel.countGuests()
 //                    if (iGuests > 0) {
-//                    //    .....Confirm if it is OK to shown down this sesstion
+//                    //    ..... Confirm if it is OK to shut down this session
 //                    //    ..... Start the confirmation activity
 //                    }
                     // else {

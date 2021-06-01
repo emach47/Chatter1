@@ -30,9 +30,33 @@
         android:layout_width="100dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:text="**Nickname**"
+        android:text="**Hostname**"
         app:layout_constraintStart_toEndOf="@+id/textSessionMembers"
         app:layout_constraintTop_toTopOf="@+id/textSessionMembers" />
+
+    <TextView
+        android:id="@+id/textSessionGuestName1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="**Guestname1*"
+        app:layout_constraintStart_toStartOf="@+id/textSessionHostName"
+        app:layout_constraintTop_toBottomOf="@+id/textSessionHostName" />
+
+    <TextView
+        android:id="@+id/textSessionGuestName2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="**Guestname2*"
+        app:layout_constraintStart_toStartOf="@+id/textSessionHostName"
+        app:layout_constraintTop_toBottomOf="@+id/textSessionGuestName1" />
+
+    <TextView
+        android:id="@+id/textSessionGuestName3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="**Guestname2*"
+        app:layout_constraintStart_toStartOf="@+id/textSessionHostName"
+        app:layout_constraintTop_toBottomOf="@+id/textSessionGuestName2" />
 
     <Button
         android:id="@+id/buttonSessionAction"

@@ -111,6 +111,17 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
             holder.textSessionGroup?.text  = (position + 1).toString()
             holder.textSessionMembers?.text = sessionRecord.sessionMembers.toString()
             holder.textSessionHostName?.text = sessionRecord.sessionHostName
+            //..... Set up Guest Names
+            val iGuestCount = sessionRecord.sessionMembers - 1
+            for (i in 0 until MAX_GUESTS) {
+                if (i > iGuestCount) {
+                    holder.textSessionGuestName[i]?.text = " "
+                }
+                else {
+                    holder.textSessionGuestName[i]?.text = sessionRecord.sessionGuestName[i]
+                }
+            }
+
             if (sessionRecord.sessionMembers  == 0) {
                 //holder.buttonSessionAction?.setText(R.string.button_text_start)
                 //..... 2021/05/08: This was the only way I could access the value in strings.xml
