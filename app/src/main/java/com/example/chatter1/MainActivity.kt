@@ -10,6 +10,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.preference.PreferenceManager
+import java.lang.Thread.sleep
 
 const val NICKNAME_KEY = "Nickname"
 //!!!!! 2021/03/28: TODO: Returning from NicknameActivity has a problem.
@@ -21,7 +22,7 @@ const val REQUEST_CODE_GET_NICKNAME = 1234
 const val REQUEST_CODE_GET_SESSION_INFORMATION = 200
 
 //..... HTTP operation request code
-const val HTTP_REQUEST_SESSION_INFORMARION    = 1
+const val HTTP_REQUEST_SESSION_INFORMATION    = 1
 const val HTTP_REQUEST_ADD_HOST               = 2
 const val HTTP_REQUEST_REMOVE_HOST            = 3
 const val HTTP_REQUEST_ADD_GUEST              = 4
@@ -90,7 +91,7 @@ class MainActivity : AppCompatActivity() {
         netViewModel.socketStatusCode.observe(this, {
             val sCode = it
             //.... If Connect
-            if (sCode == SOCKET_CONNECTEDED) {
+            if (sCode == SOCKET_CONNECTED) {
                 //..... Change the Connect Button
                 //
                 //..... Make the SEND button visible
@@ -274,21 +275,26 @@ class MainActivity : AppCompatActivity() {
                 //..... Shutdown Chatter Session
                 if (m_iSocketMode == SOCKET_MODE_HOST) {
                     //..... Any Guest still connected?
-                    val iGuests = netViewModel.countGuests()
+                    //val iGuests = netViewModel.countGuests()
 //                    if (iGuests > 0) {
 //                    //    ..... Confirm if it is OK to shut down this session
 //                    //    ..... Start the confirmation activity
 //                    }
                     // else {
                         netViewModel.shutdownHost(this, m_sGameID, m_sNickname)
-//                        //..... Wait 1 seconds to let the HTTP operation complete
-//                        sleep(1000)
-//                        finishAffinity()
+                        //xxxxx Because the HTTP function is done in background, sleep() is not effective.
+                        //..... Wait 1 seconds to let the HTTP operation complete
+                        sleep(1000)
+                        finish()
                     //}
                 }
                 else //..... SOCKET_MODE_GUEST assumed
                 {
-                        finish()
+                    netViewModel.shutdownConnectionToHost (this, m_sGameID, m_sNickname)
+                    //xxxxx Because the HTTP function is done in background, sleep() is not effective.
+                    //..... Wait 1 seconds to let the HTTP operation complete
+                    sleep(1000)
+                    finish()
                 }
             }
         }
@@ -330,9 +336,9 @@ class MainActivity : AppCompatActivity() {
         //..... 2021/05/09: The netViewModel.m_sessionTable[] that was created by SessionActivity
         //      is gone for some reason and we must rebuild it once again.
         netViewModel.unformatSessionData(m_sHttpBuffer)
-        val sessionRecord = netViewModel.m_sessionTable[iIndex]
-        val sHostIpAdress = sessionRecord.sessionHostIpAddressLocal
-        val iPort = sessionRecord.sessionHostPortNumber
+//        val sessionRecord = netViewModel.m_sessionTable[iIndex]
+//        val sHostIpAdress = sessionRecord.sessionHostIpAddressLocal
+//        val iPort = sessionRecord.sessionHostPortNumber
 
         //..... Connect to Server
         //netViewModel.connectToServer(sHostIpAdress, iPort)

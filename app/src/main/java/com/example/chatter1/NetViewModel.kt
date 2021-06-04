@@ -41,7 +41,7 @@ const val SOCKET_PORT = 8080
 
 const val SOCKET_STATUS_KEY = "socket_status"
 const val SOCKET_CLOSED = "Closed"
-const val SOCKET_CONNECTEDED = "Connected"
+const val SOCKET_CONNECTED = "Connected"
 const val SOCKET_LOST = "Lost"
 
 const val MAX_GUESTS = 3
@@ -50,6 +50,7 @@ const val LOGIN_HELLO = "@HELLO"
 const val LOGIN_RESULT_OK = 1
 const val LOGIN_RESULT_REGULAR_MESSAGE = 0
 const val LOGIN_RESULT_ERROR = -1
+const val LOGOFF_BYE = "@BYE"
 
 
 class NetViewModel : ViewModel() {
@@ -73,10 +74,11 @@ class NetViewModel : ViewModel() {
     var m_sGuestName = arrayOf ("Guest1", "Guest2", "Guest3")
     //..... The following data should be a local data.
     //      To be deleted when startServer() Coroutine function is removed
-    var m_sGuestIpAddress = ""
+    //var m_sGuestIpAddress = ""
 
     var m_guestInput:  Array<BufferedReader?> = Array(MAX_GUESTS) { null }
     var m_guestOutput: Array<PrintWriter?> = Array(MAX_GUESTS) { null }
+    var m_bOKToReadGuestSocket = Array(MAX_GUESTS) {false}
 
     //--------------------------------------------------------------------------------------------
     //  Data for Guest Mode
@@ -127,12 +129,12 @@ class NetViewModel : ViewModel() {
             val sConnect = bundle.getString(SOCKET_STATUS_KEY)
             if (sConnect != null) {
                 val sCode = sConnect.take(4)
-                if (sCode == SOCKET_CONNECTEDED.take(4)) {
+                if (sCode == SOCKET_CONNECTED.take(4)) {
                     //..... Perform the Socket connected process
                     socketStatusCode.value = sConnect
                 } else if (sCode == SOCKET_LOST.take(4)) {
                     //..... Display the connection is lost
-                    var sMessage =  "*** Connection " + sConnect
+                    val sMessage =  "*** Connection " + sConnect
                     appendToNetData (sMessage)
                     //..... Perform the Socket closed process
                     socketStatusCode.value = sConnect
@@ -238,9 +240,9 @@ class NetViewModel : ViewModel() {
             var iSession = 0
             var iStart = BYTE_BEGIN_SESSION_RECORD
             var iEnd = iStart + BYTE_SIZE_SESSION_RECORD
-            var sSessionRecord = ""
+            //var sSessionRecord = ""
             while (iSession < m_iSessions) {
-                sSessionRecord = sBuffer.substring(iStart, iEnd)
+                val sSessionRecord = sBuffer.substring(iStart, iEnd)
                 sessionRecord = unformatSessionRecord(sSessionRecord)
                 //..... 2021/05/06: Changed to make m_sessionTable[] expandble list
                 //m_sessionTable[iSession] = sessionRecord
@@ -341,12 +343,12 @@ class NetViewModel : ViewModel() {
 
     fun addGuest (context: AppCompatActivity, sGameID: String, sHostName: String, sGuestName: String) {
 
-        val sUrl = constructUrlAddGuest(context, sGameID, sHostName, sGuestName)
+        val sUrl = constructUrlAddGuest(sGameID, sHostName, sGuestName)
         //..... Comment out during testing
         postURL(context, sUrl)
     }
 
-    fun constructUrlAddGuest(context: AppCompatActivity, sGameID: String, sHostName: String, sGuestName : String): String {
+    fun constructUrlAddGuest(sGameID: String, sHostName: String, sGuestName : String): String {
 
         //..... Build the following URL
         //http://www.machida.com/cgi-bin/addguest2.pl?Game=RumNet+HOST=TestHost0001+GUEST=Guest001****
@@ -361,12 +363,12 @@ class NetViewModel : ViewModel() {
 
     fun removeGuest (context: AppCompatActivity, sGameID: String, sHostName: String, sGuestName: String) {
 
-        val sUrl = constructUrlRemoveGuest(context, sGameID, sHostName, sGuestName)
+        val sUrl = constructUrlRemoveGuest(sGameID, sHostName, sGuestName)
         //..... Comment out during testing
         postURL(context, sUrl)
     }
 
-    fun constructUrlRemoveGuest(context: AppCompatActivity, sGameID: String, sHostName: String, sGuestName : String): String {
+    fun constructUrlRemoveGuest(sGameID: String, sHostName: String, sGuestName : String): String {
 
         //..... Build the following URL
         //http://www.machida.com/cgi-bin/addguest2.pl?Game=RumNet+HOST=TestHost0001+GUEST=Guest001****
@@ -428,7 +430,7 @@ class NetViewModel : ViewModel() {
     //..... normalizedIpAddress converts 10.0.0.121 to 010000000121
     fun normalizeIpAddress(sIpAddress: String): String {
 
-        var sAddresses = sIpAddress.split(".")
+        val sAddresses = sIpAddress.split(".")
         var sNormalizedIpAddress = ""
         sAddresses.forEach {
             var sAddr = "00" + it
@@ -475,9 +477,9 @@ class NetViewModel : ViewModel() {
             output = PrintWriter(sSocket.getOutputStream())
             input = BufferedReader(InputStreamReader(sSocket.getInputStream()))
             sData = "Connected to " + sServerIpAddress + " (" + iServerPort.toString() + ")"
-            putBundleString(SOCKET_STATUS_KEY, SOCKET_CONNECTEDED)
+            putBundleString(SOCKET_STATUS_KEY, SOCKET_CONNECTED)
             //..... Let the server know who I am
-            loginToServer(sNickname)
+            sendloginMessageToServer(sNickname)
             //..... Start a forever loop to get incoming messages from the Server
             m_bOkToTryReadSocket = true
             readMessage()
@@ -520,7 +522,7 @@ class NetViewModel : ViewModel() {
     ////////////////////////////////////////////////////////////////////////////
     private fun readMessage() {
         thread(start = true) {
-            val bundle = Bundle()
+            //val bundle = Bundle()
             while (m_bOkToTryReadSocket) {
                 try {
                     //..... Incoming sMessage now shows who is sending the sMessage
@@ -565,11 +567,27 @@ class NetViewModel : ViewModel() {
         }
     }
 
-    fun loginToServer(sNickname: String) {
+    fun sendloginMessageToServer(sNickname: String) {
 
         thread(start = true) {
 
             val sMessage = sNickname + ": " + LOGIN_HELLO
+            //..... Send the message
+            output.write(sMessage)
+            //..... 2021/03/08: Must put a CR to complete sending the message
+            output.println()
+            output.flush()
+
+            //..... This message is not shown to the User
+            //putBundleString(MESSAGE_KEY, sMessage)
+        }
+    }
+
+    fun sendLogOffMessage (sNickname: String) {
+
+        thread(start = true) {
+
+            val sMessage = sNickname + ": " + LOGOFF_BYE
             //..... Send the message
             output.write(sMessage)
             //..... 2021/03/08: Must put a CR to complete sending the message
@@ -597,13 +615,13 @@ class NetViewModel : ViewModel() {
     fun startServerThread(iSessionID: Int, sHostName : String) {
 
         val serverSocket : ServerSocket
-        var guestSocket = Socket()
+        var guestSocket : Socket
         var iError = 0
         var sError = ""
         var sGuestIpAddress = ""
         var sMessage = ""
 
-        val iSessionIndex = iSessionID - 1
+        //val iSessionIndex = iSessionID - 1
         //..... Really need to create a sessionTable[iSessionIndex]
         m_sHostName = sHostName
 
@@ -682,6 +700,7 @@ class NetViewModel : ViewModel() {
             m_guestSocket[m_iGuestSockets] = guestSocket
             m_guestInput[m_iGuestSockets] = BufferedReader(InputStreamReader(guestSocket.getInputStream()))
             m_guestOutput[m_iGuestSockets] = PrintWriter(guestSocket.getOutputStream())
+            m_bOKToReadGuestSocket[m_iGuestSockets] = true
             m_iGuestSockets = m_iGuestSockets + 1
             iResult = m_iGuestSockets
         }
@@ -769,7 +788,7 @@ class NetViewModel : ViewModel() {
         thread(start = true) {
             if (input != null) {
                 val bundle = Bundle()
-                while (m_bOkToTryReadSocket) {
+                while (m_bOKToReadGuestSocket[iGuest]) {
                     try {
                         sMessage = input.readLine()
                         //..... Recognize & store this Guest Nickname if we haven't done it already
@@ -793,14 +812,15 @@ class NetViewModel : ViewModel() {
                         }
                     } catch (e: Exception) {
                         //..... Is this exception the result of the DISCONNECT Button?
-                        if (m_bOkToTryReadSocket) {
+                        if (m_bOKToReadGuestSocket[iGuest]) {
                             //..... No, the connection to the server is lost
                             sMessage = SOCKET_LOST + " to " + m_sGuestName[iGuest]
                             putBundleString(SOCKET_STATUS_KEY, sMessage)
                             closeSocket(sSocket)
-                            e.printStackTrace()
-                            //..... Stop the readLine() loop
-                            m_bOkToTryReadSocket = false
+                            //..... Stop the input.readLine() loop
+                            m_bOKToReadGuestSocket[iGuest] = false
+                            removeGuest (m_context, m_sGameID, m_sHostName, m_sGuestName[iGuest])
+                            //e.printStackTrace()
                         }
                     }
                 }
@@ -856,19 +876,28 @@ class NetViewModel : ViewModel() {
         removeHost (context, sGameID, sHostName)
         //..... Close all Client sockets if still opened
         closeAllGuestSockets()
-        //..... Close ServerSoclet
+        //..... Close ServerSocket
         //m_serverSocket.close()
+
+    }
+
+    fun shutdownConnectionToHost(context: AppCompatActivity, sGameID: String, sGuestName: String) {
+
+        sendLogOffMessage (sGuestName)
+        //..... This operation must be performed by the Host after it gets the loff off message.
+        //removeGuest (context, sGameID, m_sHostName, sGuestName)
+        closeSocket (m_socket)
 
     }
 
     fun removeHost(context: AppCompatActivity, sGameID: String, sHostName: String) {
 
-        val sUrl = constructUrlRemoveHost(context, sGameID, sHostName)
+        val sUrl = constructUrlRemoveHost(sGameID, sHostName)
         //..... Comment out during testing
         postURL(context, sUrl)
     }
 
-    fun constructUrlRemoveHost(context: AppCompatActivity, sGameID: String, sHostName: String): String {
+    fun constructUrlRemoveHost(sGameID: String, sHostName: String): String {
 
         //..... Build the following URL
         //http://www.machida.com/cgi-bin/remhost2.pl?Game=RumNet+HOST=TestHost0001
