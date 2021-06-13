@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -20,8 +21,10 @@ import java.net.InetAddress
 import java.net.NetworkInterface.*
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.URL
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.charset.Charset
 import kotlin.concurrent.thread
 
 const val SESSION_TABLE_STARTED = 0
@@ -44,10 +47,18 @@ const val SOCKET_CLOSED = "Closed"
 const val SOCKET_CONNECTED = "Connected"
 const val SOCKET_LOST = "Lost"
 
-const val MAX_GUESTS = 3
+//..... MAX_GUESTS is one less than MAX_MEMBERS excluding the Host
+const val MAX_GUESTS = MAX_MEMBERS - 1
+//..... For Testing Guest Full
+//const val MAX_GUESTS = 1
 
+const val GUEST_NAME_EMPTY = "empty"
+const val GUEST_NAME_OK = 777
+
+////..... MAX_GUEST_SOCKETS is one larger than MAX_GUESTS to handle a temporary connection
+//const val MAX_GUEST_SOCKETS = MAX_GUESTS + 1
 const val LOGIN_HELLO = "@HELLO"
-const val LOGIN_RESULT_OK = 1
+//const val LOGIN_RESULT_OK = 1
 const val LOGIN_RESULT_REGULAR_MESSAGE = 0
 const val LOGIN_RESULT_ERROR = -1
 const val LOGOFF_BYE = "@BYE"
@@ -60,28 +71,33 @@ class NetViewModel : ViewModel() {
     //==============================================================================================
     //..... Message
     val netData = MutableLiveData<String>()
+    //..... HTTP return data
+    val httpResponse = MutableLiveData<String>()
+    val httpResponse2 = MutableLiveData<String>()
 
-    //..... Socket connect and disconnect
-    val socketStatusCode = MutableLiveData<String>()
+//    //..... Socket connect and disconnect
+//    val socketStatusCode = MutableLiveData<String>()
 
     //==============================================================================================
-    //  Data for Host Mode
+    //  Data used by for Host Mode
     //==============================================================================================
+    //..... m_serverSocket is not used & to be deleted
     lateinit var m_serverSocket: ServerSocket
+    var m_bOKToAcceptServerSocket = false
     var m_iGuestSockets = 0
     var m_guestSocket = MutableList(MAX_GUESTS) { Socket() }
-    //..... m_sGuestName needs to be replaced with the correct Nickname upon connection
-    var m_sGuestName = arrayOf ("Guest1", "Guest2", "Guest3")
-    //..... The following data should be a local data.
-    //      To be deleted when startServer() Coroutine function is removed
-    //var m_sGuestIpAddress = ""
-
     var m_guestInput:  Array<BufferedReader?> = Array(MAX_GUESTS) { null }
     var m_guestOutput: Array<PrintWriter?> = Array(MAX_GUESTS) { null }
     var m_bOKToReadGuestSocket = Array(MAX_GUESTS) {false}
+    var m_bGuestSocketAccepted = Array(MAX_GUESTS) {false}
+    //..... m_sGuestName needs to be replaced with the correct Nickname upon connection
+    //var m_sGuestName = arrayOf ("empty", "empty", "empty")
+    var m_sGuestName = Array(MAX_GUESTS) { GUEST_NAME_EMPTY }
+    var m_sGuestIpAddress = Array(MAX_GUESTS) { "" }
+
 
     //--------------------------------------------------------------------------------------------
-    //  Data for Guest Mode
+    //  Data used for Guest Mode
     //--------------------------------------------------------------------------------------------
     //..... m_socket for the Guest mode
     //      It is used (only once) to close the socket in readMessage() when the socket to the Host is closed
@@ -130,19 +146,29 @@ class NetViewModel : ViewModel() {
             if (sConnect != null) {
                 val sCode = sConnect.take(4)
                 if (sCode == SOCKET_CONNECTED.take(4)) {
-                    //..... Perform the Socket connected process
-                    socketStatusCode.value = sConnect
+//                    //..... Perform the Socket connected process
+//                    socketStatusCode.value = sConnect
                 } else if (sCode == SOCKET_LOST.take(4)) {
                     //..... Display the connection is lost
                     val sMessage =  "*** Connection " + sConnect
                     appendToNetData (sMessage)
-                    //..... Perform the Socket closed process
-                    socketStatusCode.value = sConnect
+//                    //..... Perform the Socket closed process
+//                    socketStatusCode.value = sConnect
                 } else if (sCode == SOCKET_CLOSED.take(4)) {
                     //..... Display the connection is lost
-                    appendToNetData("=== Socket is closed ===")
-                    //..... Perform the Socket closed process
-                    socketStatusCode.value = sConnect
+                    val sMessage = "=== Socket is " + sConnect
+                    //appendToNetData("=== Socket is closed ===")
+                    appendToNetData(sMessage)
+//                    //..... Perform the Socket closed process
+//                    socketStatusCode.value = sConnect
+                } else if (sConnect == LOGOFF_BYE) {
+                    //..... Display the connection is lost
+                    appendToNetData("... Sent Log Off message to Host ...")
+//                    //..... Perform the Socket closed process
+//                    socketStatusCode.value = sConnect
+                    //..... Show closed socket
+                    closeSocket (m_socket)
+
                 }
             }
         }
@@ -181,6 +207,31 @@ class NetViewModel : ViewModel() {
         // Add the request to the RequestQueue.
         queue.add(stringRequest)
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    //  Must get context from MainActivity.
+    //  Although this function does not need context, the Volley HTTP function needs it.
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    fun httpGetSessionData(context: AppCompatActivity, sGameID: String) {
+
+        //..... Save context
+        m_context = context
+
+        viewModelScope.launch {
+            val sResponse = httpPostGetSessionData(sGameID)
+            httpResponse.value = sResponse
+        }
+    }
+
+    suspend fun httpPostGetSessionData (sGameID: String) : String {
+
+        return withContext(Dispatchers.IO) {
+            val sURL = HTTP_SESSION_SHOW + sGameID
+            val url = URL(sURL)
+            return@withContext url.readText(Charset.defaultCharset())
+        }
+    }
+
 
     ///////////////////////////////////////////////////////////////////////////////////////
     //
@@ -311,7 +362,7 @@ class NetViewModel : ViewModel() {
         return sessionRecord
     }
 
-    fun addHost(context: AppCompatActivity, sGameID: String, sHostName: String, iSessionID: Int) {
+    fun addHost(context: AppCompatActivity, sGameID: String, sHostName: String) {
 
         m_sGameID = sGameID
 
@@ -364,7 +415,6 @@ class NetViewModel : ViewModel() {
     fun removeGuest (context: AppCompatActivity, sGameID: String, sHostName: String, sGuestName: String) {
 
         val sUrl = constructUrlRemoveGuest(sGameID, sHostName, sGuestName)
-        //..... Comment out during testing
         postURL(context, sUrl)
     }
 
@@ -399,6 +449,23 @@ class NetViewModel : ViewModel() {
         // Add the request to the RequestQueue.
         queue.add(stringRequest)
 
+    }
+
+    fun httpPostURL(context: AppCompatActivity, sURL: String) {
+
+        viewModelScope.launch {
+            val sResponse = httpPostURL2(sURL)
+            httpResponse2.value = sResponse
+        }
+    }
+
+    suspend fun httpPostURL2 (sURL: String) : String {
+
+        return withContext(Dispatchers.IO) {
+            //val sURL = HTTP_SESSION_SHOW + sGameID
+            val url = URL(sURL)
+            return@withContext url.readText(Charset.defaultCharset())
+        }
     }
 
     fun getLocalIpAddress(context: AppCompatActivity): String? {
@@ -490,17 +557,6 @@ class NetViewModel : ViewModel() {
         return sData
     }
 
-    fun putBundleString(sMessageKey: String, sMessage: String) {
-
-        val bundle = Bundle()
-        bundle.putString(sMessageKey, sMessage)
-        Message().also {
-            it.data = bundle
-            handler.sendMessage(it)
-        }
-
-    }
-
     fun appendToNetData(sMessage: String) {
         var sData = netData.value
         //..... 2021/03/18: nData.value returns "null" if it is null. Remove it.
@@ -562,8 +618,9 @@ class NetViewModel : ViewModel() {
             output.println()
             output.flush()
 
-            //..... Send sMessage to UI via bundle
-            putBundleString(MESSAGE_KEY, sMessage)
+            //..... Show this message on the UI Textview
+            //putBundleString(MESSAGE_KEY, sMessage)
+            passMessageToMainThread(sMessage)
         }
     }
 
@@ -596,15 +653,25 @@ class NetViewModel : ViewModel() {
 
             //..... This message is not shown to the User
             //putBundleString(MESSAGE_KEY, sMessage)
+            putBundleString(SOCKET_STATUS_KEY, LOGOFF_BYE)
+
+            closeSocket (m_socket)
+
         }
     }
 
     fun closeSocket(socket: Socket) {
 
+        //..... Get IP address of this socket
+        val inetAddress = socket.inetAddress
+        var sMessage = inetAddress.hostAddress
+
         m_bOkToTryReadSocket = false
         socket.close()
         //..... Notify MainActivity
-        putBundleString(SOCKET_STATUS_KEY, SOCKET_CLOSED)
+        sMessage = SOCKET_CLOSED + " (" + sMessage + ")"
+        //putBundleString(SOCKET_STATUS_KEY, SOCKET_CLOSED)
+        putBundleString(SOCKET_STATUS_KEY, sMessage)
 
     }
 
@@ -612,138 +679,206 @@ class NetViewModel : ViewModel() {
     //      Socket operations (Server)
     //==================================================================================================================
 
-    fun startServerThread(iSessionID: Int, sHostName : String) {
+    //fun startServerThread(iSessionID: Int, sHostName : String) {
+    fun startServerThread(sHostName : String) {
 
-        val serverSocket : ServerSocket
+        //val serverSocket : ServerSocket
         var guestSocket : Socket
+        var iGuest = -1
         var iError = 0
         var sError = ""
-        var sGuestIpAddress = ""
-        var sMessage = ""
+        //var sGuestIpAddress = ""
+        var sMessage: String
 
         //val iSessionIndex = iSessionID - 1
-        //..... Really need to create a sessionTable[iSessionIndex]
+        //..... In future, we need to create a sessionTable[iSessionIndex]
         m_sHostName = sHostName
 
         //m_serverSocket = ServerSocket(SOCKET_PORT)
-        serverSocket = ServerSocket(SOCKET_PORT)
+        m_serverSocket = ServerSocket(SOCKET_PORT)
+        m_bOKToAcceptServerSocket = true
 
         thread (start = true) {
             //..... Start accept loop for clients
-            while (true) {
+            while (m_bOKToAcceptServerSocket) {
 
                 try {
-                    guestSocket = serverSocket.accept()
-                    //..... add this guestSocket to the guest socket table
+                    guestSocket = m_serverSocket.accept()
+                    //..... Add this guestSocket to the guest socket table
                     //      NOTE: addGuestSocket not only add this guest socket to the table
                     //      but also creates input & output objects for this Guest
-                    val inetAddress = guestSocket.inetAddress
-                    sGuestIpAddress = inetAddress.hostAddress
-                    val iResult = addGuestSocket(guestSocket)
-                    if (iResult < 0) {
+                    iGuest = addGuestSocket(guestSocket)
+                    if (iGuest < 0) {
                         //..... Do not accept this socket; m_guestSockets[] are full
                         iError = -1
-                        sError = "Err001: Too many guests; " + sGuestIpAddress + " NOT Accepted\n"
+                        sError = "Err001: Too many guests; " + m_sGuestIpAddress[iGuest] + " NOT Accepted\n"
+                        declineConnection (guestSocket, m_sGuestIpAddress[iGuest])
                     }
-                    //..... Guest connection is made
                 } catch (e: IOException) {
+                    //..... Server Socket closed ...
                     iError = -101
-                    sError = "Err101: Failed to accept guest socket\n"
+                    sError = "=== ServerSocket closed ===\n"
+                    //..... Stop the accept loop
+                    m_bOKToAcceptServerSocket = false
                 }
 
                 if (iError < 0) {
                     sMessage = sError
                     //..... Show the error message to the UI thread
+
                     passMessageToMainThread (sMessage)
                 } else {
                     //..... Successfully accepted this Guest
-                    sMessage = "Connected to " + sGuestIpAddress
+                    sMessage = "Connecting to " + m_sGuestIpAddress[iGuest] + "..."
                     passMessageToMainThread (sMessage)
-
                     //..... Start the read operation for this Guest
-                    val iGuest = m_iGuestSockets - 1
-                    //..... welcomeGuest sends a welcome message and starts readMessage (iGuest)
-                    //      to start the input operation
                     readGuestMessage (iGuest)
                 }
-
             }
         }
 
     }
-//
-//    fun getHostName (iSessionID: Int) : String {
-//
-//        val sHostName = m_sessionTable[iSessionID].sessionHostName
-//        return sHostName
-//    }
+
+    fun declineConnection (socket: Socket, sIpAddress: String) {
+
+        val output = PrintWriter(socket.getOutputStream())
+        var sMessage = "*** Sorry, this session is full ***"
+        output.write(sMessage)
+        //..... 2021/03/08: Must put a CR to complete sending the message
+        output.println()
+        output.flush()
+
+        //..... Display this event in Logcat
+        sMessage = "*** " + sIpAddress + " rejected; " + sMessage
+        Log.i(LOG_CHATTER, sMessage)
+    }
 
     fun passMessageToMainThread (sMessage: String) {
 
-        val bundle = Bundle()
+//        val bundle = Bundle()
+//
+//        bundle.putString(MESSAGE_KEY, sMessage)
+//        Message().also {
+//            it.data = bundle
+//            handler.sendMessage(it)
+//        }
+        putBundleString (MESSAGE_KEY, sMessage)
+    }
 
-        bundle.putString(MESSAGE_KEY, sMessage)
+    fun putBundleString(sMessageKey: String, sMessage: String) {
+
+        val bundle = Bundle()
+        bundle.putString(sMessageKey, sMessage)
         Message().also {
             it.data = bundle
             handler.sendMessage(it)
         }
+
     }
 
+    /******************************************************************************
+     2021/06/06: addGuestSocket design changed.
+     The m_guestSocket[iGuest] is no longer moved when a Guest signs out a Chatter session.
+     This is because moving m_guestSocket[iGuest] while the Socket is being read will result in
+     inconsistency.
+     Instead of moving m_guestSocket[] entries, only the m_bOKTOReadGuestSocket[i] is set to false
+     for the Guest who signs off. When it is off, m_GuestSocket[] is considered to be available for
+     a new Guest sign-in.
+     This change affects the process logic in addGuestSocket() and removeGuestSocket()
+     and possible other process related to Guest Socket related functions.
+
+     The return value of addGuestSocket() remains the same:
+        -1 if the Guest Socket table is full
+        iGuest if the newly Guest is added successfully.
+    *******************************************************************************/
     fun addGuestSocket(guestSocket: Socket): Int {
 
-        var iResult = 0
-
-        //..... m_iGuestSockets must be zero to (MAX_GUESTS - 1) to add this socket
-        if (m_iGuestSockets >= MAX_GUESTS) {
-            iResult = -1
-        } else {
-            m_guestSocket[m_iGuestSockets] = guestSocket
-            m_guestInput[m_iGuestSockets] = BufferedReader(InputStreamReader(guestSocket.getInputStream()))
-            m_guestOutput[m_iGuestSockets] = PrintWriter(guestSocket.getOutputStream())
-            m_bOKToReadGuestSocket[m_iGuestSockets] = true
-            m_iGuestSockets = m_iGuestSockets + 1
-            iResult = m_iGuestSockets
+        //..... Verify we have an open slot for this potential Guest
+        val iGuest = findGuestSocketAvailable()
+        if (iGuest < 0) {
+            return iGuest
         }
+
+        m_guestSocket[iGuest]           = guestSocket
+        m_guestInput[iGuest]            = BufferedReader(InputStreamReader(guestSocket.getInputStream()))
+        m_guestOutput[iGuest]           = PrintWriter(guestSocket.getOutputStream())
+        m_bOKToReadGuestSocket[iGuest]  = true
+        val inetAddress                 = guestSocket.inetAddress
+        m_sGuestIpAddress[iGuest]       = inetAddress.hostAddress
+        //..... Set m_bGuestAocketAccepted to false until sign in
+        m_bGuestSocketAccepted[iGuest]  = false
+        m_iGuestSockets += 1
+
+        return iGuest
+    }
+
+    fun findGuestSocketAvailable () : Int {
+
+        var iResult = -1
+
+        //..... m_iGuestSockets must be zero to (MAX_GUESTS - 1) to add to the socket table
+        if (m_iGuestSockets >= MAX_GUESTS) {
+            return iResult
+        }
+        for (iGuest in 0 until MAX_GUESTS) {
+            if (!m_bOKToReadGuestSocket[m_iGuestSockets]) {
+                iResult = iGuest
+                return iResult
+            }
+        }
+        return iResult
+    }
+
+    fun removeGuestSocket(iGuest: Int): Int {
+
+        var iResult = -1
+
+        //..... Do Range check (iGuest zero-relative) to avoid error condition
+        if (iGuest < 0 || iGuest >= m_iGuestSockets) {
+            //iResult = -1
+            return iResult
+        }
+        //..... Make sure this socket is open
+        if (!m_bOKToReadGuestSocket[iGuest]) {
+            iResult = -2
+            return iResult
+        }
+
+        closeGuestSocket (iGuest)
+
+        m_iGuestSockets -= 1
+        iResult = m_iGuestSockets
         return iResult
     }
 
     fun countGuests() : Int {
 
-        return m_iGuestSockets
+        var iGuests = 0
+
+        for (i in 0 until MAX_GUESTS) {
+            if (m_bOKToReadGuestSocket[i]) {
+                iGuests += 1
+            }
+        }
+        return iGuests
     }
-//
-//    fun removeGuestSocket (iGuest: Int) : Int {
-//
-//        var iResult = 0
-//        var iGuestTotal = m_iGuestSockets
-//        //..... Do Range check (iGuest zero-relative) to avoid error condition
-//        if (iGuest >= iGuestTotal) {
-//            //..... Error: cannot remove this Guest
-//            iResult = -1
-//            return iResult
-//        }
-//        //..... Do I need to remove only the last entry?
-//        if (iGuest == (iGuestTotal - 1)) {
-//            //..... Yes, simply decrement m_iGuestSockets
-//            iGuestTotal = iGuestTotal - 1
-//            m_iGuestSockets = iGuestTotal
-//            iResult = iGuestTotal
-//            return iResult
-//        }
-//        //..... iGuest < (iGuest - 1)
-//        for (i in iGuest..(iGuestTotal - 1)) {
-//            m_guestSocket[i] = m_guestSocket[i+1]
-//            m_sGuestName [i] = m_sGuestName [i+1]
-//        }
-//        iGuestTotal = iGuestTotal - 1
-//        m_iGuestSockets = iGuestTotal
-//        iResult = iGuestTotal
-//        return iResult
-//    }
 
     fun welcomeGuest(iGuest: Int) {
 
-        val sMessage = m_sHostName + ": Welcome " + m_sGuestName[iGuest]
+        val sMessage = m_sHostName + ": " + m_sGuestName[iGuest] + " has joined this session ..."
+        //..... Also, show the message in the UI text
+        //putBundleString(MESSAGE_KEY, sMessage)
+        //passMessageToMainThread (sMessage)
+        broadcastMessage (sMessage, MESSAGE_HOST_ORIGINATED)
+
+    }
+
+    fun notifyGuestLogOff (sGuestName: String) {
+
+        val sMessage = sGuestName + ": has signed off ..."
+        //..... Show the message in the UI text
+        //putBundleString(MESSAGE_KEY, sMessage)
+        //passMessageToMainThread (sMessage)
         broadcastMessage (sMessage, MESSAGE_HOST_ORIGINATED)
 
     }
@@ -752,15 +887,13 @@ class NetViewModel : ViewModel() {
 
         //..... iGuestOriginated == MESSAGE_HOST_ORIGINATED means it originated from the Host
         thread(start = true) {
-            for (iGuest in 0..(m_iGuestSockets - 1)) {
+            passMessageToMainThread(sMessage)
+
+            for (iGuest in 0 until m_iGuestSockets) {
                 //..... Skip the sending Guest
-                if (iGuest != iGuestOriginated) {
+                if (iGuest != iGuestOriginated  && m_bOKToReadGuestSocket[iGuest]) {
                     sendGuestMessage(iGuest, sMessage)
                 }
-            }
-            //..... Do not show the sent message if it came from a Guest
-            if (iGuestOriginated == MESSAGE_HOST_ORIGINATED) {
-                putBundleString(MESSAGE_KEY, sMessage)
             }
         }
     }
@@ -781,32 +914,50 @@ class NetViewModel : ViewModel() {
 
     fun readGuestMessage(iGuest: Int) {
 
-        val sSocket = m_guestSocket[iGuest]
+        val sGuest = m_guestSocket[iGuest]
         val input = m_guestInput[iGuest]
-        var sMessage = ""
+        var sMessage: String
 
         thread(start = true) {
             if (input != null) {
-                val bundle = Bundle()
+                //val bundle = Bundle()
                 while (m_bOKToReadGuestSocket[iGuest]) {
                     try {
                         sMessage = input.readLine()
                         //..... Recognize & store this Guest Nickname if we haven't done it already
-                        getGuestNickname(sMessage, iGuest)
-                        //..... If this is the first Login message from the Guest, handle it differently
-                        val iResult = checkLoginMessage (sMessage)
-                        if (iResult == LOGIN_RESULT_OK) {
+                        if (m_sGuestName[iGuest] == GUEST_NAME_EMPTY) {
+                            //..... Remember this Guest name
+                            val sGuestName = extractGuestNickname(sMessage)
+                            if (sGuestName.isNotEmpty() && m_sGuestName[iGuest] == GUEST_NAME_EMPTY) {
+                                val iResult = checkDuplicateName (sGuestName)
+                                //..... If the name of this new Guest has already logged in, decline the connection.
+                                if (iResult == GUEST_NAME_OK) {
+                                    m_sGuestName[iGuest] = sGuestName
+                                }
+                                else {
+                                    rejectDuplicateGuestName (sGuestName, iGuest)
+                                }
+                            }
+                        }
+
+                        //..... If this is a log protocol message from Guest, handle it differently
+                        val sMessageBody = getMessageBody(sMessage)
+                        if (sMessageBody == LOGIN_HELLO) {
                             addGuest (m_context, m_sGameID, m_sHostName, m_sGuestName[iGuest])
                             welcomeGuest(iGuest)
                         }
                         else
+                        if (sMessageBody == LOGOFF_BYE) {
+                            val sGuestName = m_sGuestName[iGuest]
+                            removeGuest (m_context, m_sGameID, m_sHostName, sGuestName)
+                            removeGuestSocket (iGuest)
+                            notifyGuestLogOff (sGuestName)
+                            //..... Stop the input.readLine() loop
+                            m_bOKToReadGuestSocket[iGuest] = false
+                        }
+                        else
                         {
-                            //..... iResult == LOGIN_RESULT_REGULAR_MESSAGE)
-                            bundle.putString(MESSAGE_KEY, sMessage)
-                            Message().also {
-                                it.data = bundle
-                                handler.sendMessage(it)
-                            }
+                            //passMessageToMainThread(sMessage)
                             //..... Broadcast sMessage to the Guests exclusing the originator
                             broadcastMessage(sMessage, iGuest)
                         }
@@ -816,7 +967,7 @@ class NetViewModel : ViewModel() {
                             //..... No, the connection to the server is lost
                             sMessage = SOCKET_LOST + " to " + m_sGuestName[iGuest]
                             putBundleString(SOCKET_STATUS_KEY, sMessage)
-                            closeSocket(sSocket)
+                            closeSocket(sGuest)
                             //..... Stop the input.readLine() loop
                             m_bOKToReadGuestSocket[iGuest] = false
                             removeGuest (m_context, m_sGameID, m_sHostName, m_sGuestName[iGuest])
@@ -828,34 +979,35 @@ class NetViewModel : ViewModel() {
         }
     }
 
-    fun checkLoginMessage (sMessage: String) : Int {
+    fun checkDuplicateName (sGuestName : String) : Int {
 
-        var iResult = 0
-        var sMessageBody = ""
-        val iLength = sMessage.length - 1
-        for (i in 0..iLength) {
-            if (sMessage[i] == ':') {
-                sMessageBody = sMessage.substring (i+2, iLength+1)
+        var iResult = GUEST_NAME_OK
+
+        for (i in 0 until MAX_GUESTS) {
+            if (sGuestName == m_sGuestName[i]) {
+                iResult = i
                 break
             }
         }
 
-        if (sMessageBody == LOGIN_HELLO) {
-            iResult = 1
-        }
-
         return iResult
     }
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    //  declineConnection (iGuest) does the following
+    //  (1) Send a rejection message to this Guest
+    //  (2) Remove the Socket entry for this Guest
+    //  (3) Notify this event to the UI activity
+    //  (4) Do not issue another input.readLine() on this socket
+    //      That is, set m_bOKToREadGuestSocket[iGuest] = false
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    fun rejectDuplicateGuestName (sName: String, iGuest : Int) {
 
-    fun getGuestNickname (sMessage : String, iGuest : Int) {
-
-        var sNickname = "Guest" + (iGuest+1).toString()
-        if (sNickname == m_sGuestName[iGuest]) {
-            sNickname = extractGuestNickname (sMessage)
-            if (sNickname.isNotEmpty()) {
-                m_sGuestName[iGuest] = sNickname
-            }
-        }
+        var sMessage = "*** " + sName + " is already used; Connection declied ***"
+        sendGuestMessage (iGuest, sMessage)
+        passMessageToMainThread(sMessage)
+        removeGuestSocket(iGuest)
+        sMessage = "=== Socket to " + m_sGuestIpAddress[iGuest] + " closed ==="
+        passMessageToMainThread(sMessage)
     }
 
     fun extractGuestNickname (sMessage: String) : String {
@@ -871,22 +1023,38 @@ class NetViewModel : ViewModel() {
         return sNickname
     }
 
+    fun getMessageBody (sMessage: String) : String {
+
+        var sMessageBody = ""
+        val iLength = sMessage.length - 1
+        for (i in 0..iLength) {
+            if (sMessage[i] == ':') {
+                sMessageBody = sMessage.substring (i+2, iLength+1)
+                break
+            }
+        }
+
+        return sMessageBody
+    }
+
     fun shutdownHost(context: AppCompatActivity, sGameID: String, sHostName: String) {
 
-        removeHost (context, sGameID, sHostName)
+        //removeHost (context, sGameID, sHostName)
+        removeHost2 (context, sGameID, sHostName)
         //..... Close all Client sockets if still opened
         closeAllGuestSockets()
         //..... Close ServerSocket
-        //m_serverSocket.close()
-
+        m_serverSocket.close()
     }
 
-    fun shutdownConnectionToHost(context: AppCompatActivity, sGameID: String, sGuestName: String) {
+    //fun shutdownConnectionToHost(context: AppCompatActivity, sGameID: String, sGuestName: String) {
+    fun shutdownConnectionToHost(sGuestName: String) {
 
         sendLogOffMessage (sGuestName)
-        //..... This operation must be performed by the Host after it gets the loff off message.
+        //..... This operation must be performed by the Host after the Host gets the log off message.
         //removeGuest (context, sGameID, m_sHostName, sGuestName)
-        closeSocket (m_socket)
+        //..... This operation is now down after completion of the SendLogOffMessage.
+        //closeSocket (m_socket)
 
     }
 
@@ -895,6 +1063,13 @@ class NetViewModel : ViewModel() {
         val sUrl = constructUrlRemoveHost(sGameID, sHostName)
         //..... Comment out during testing
         postURL(context, sUrl)
+    }
+
+    fun removeHost2(context: AppCompatActivity, sGameID: String, sHostName: String) {
+
+        val sUrl = constructUrlRemoveHost(sGameID, sHostName)
+        //..... Comment out during testing
+        httpPostURL(context, sUrl)
     }
 
     fun constructUrlRemoveHost(sGameID: String, sHostName: String): String {
@@ -910,7 +1085,7 @@ class NetViewModel : ViewModel() {
 
     fun closeAllGuestSockets () {
         if (m_iGuestSockets > 0) {
-            for (i in 0..(m_iGuestSockets - 1)) {
+            for (i in 0 until m_iGuestSockets) {
                 closeGuestSocket (i)
             }
         }
@@ -918,8 +1093,12 @@ class NetViewModel : ViewModel() {
 
     fun closeGuestSocket (iGuest: Int) {
 
+        if (iGuest < 0 || iGuest >= m_iGuestSockets)
+            return
+        m_bOKToReadGuestSocket[iGuest] = false
         val socket = m_guestSocket[iGuest]
         socket.close()
+        m_sGuestName[iGuest] = GUEST_NAME_EMPTY
     }
 
 

@@ -2,6 +2,7 @@ package com.example.chatter1
 
 import android.graphics.Color
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 
@@ -64,8 +65,8 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
         //      However, m_ssesionTable[] contains valid data
         //      So, if I can find out how to pass m_iSessions from SessionActivity,
         //      I may be able to do what I want to do without using Realm.
-        val sessionActivity = SessionActivity()
-        val iSessions = sessionActivity.m_iSessions
+        //val sessionActivity = SessionActivity()
+        //val iSessions = sessionActivity.m_iSessions
         m_iSessions = netViewModel.m_iSessions
         m_iSessions = 2
         //m_iSessions = NetViewModel.m_iSessions
@@ -128,6 +129,7 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
                 //      I got the answer from the following Stack Overflow URL
                 //      https://stackoverflow.com/questions/52765121/how-do-i-call-getstring-inside-the-onbindviewholder-method-of-a-recycler-vie
                 var sText = holder.itemView.getContext().getString(R.string.button_text_start)
+                holder.buttonSessionQuit?.setVisibility (View.VISIBLE)
                 //var sText = R.string.button_text_start.toString()
                 sText = sText + " " + (position + 1).toString()
                 holder.buttonSessionAction?.setText (sText)

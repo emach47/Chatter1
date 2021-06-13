@@ -115,4 +115,15 @@ class SessionActivity : AppCompatActivity() {
         setResult (REQUEST_CODE_GET_SESSION_INFORMATION, intent)
         finish ()
     }
+
+    fun onClickButtonQuit (view : View) {
+
+        //..... Find which action type
+        val sButtonText = view.buttonSessionQuit.text
+
+        val intent = Intent()
+        intent.putExtra (RETURN_DATA_SESSION_ACTION_KEY, sButtonText)
+        setResult (REQUEST_CODE_GET_SESSION_INFORMATION, intent)
+        finish ()
+    }
 }

@@ -1,5 +1,8 @@
 package com.example.chatter1
 
+//..... Log Tag
+const val LOG_CHATTER = "CHATTER"
+
 //..... Intent Key names
 const val HTTP_BUFFER = "HTTP Buffer"
 const val RETURN_DATA_SESSION_ACTION_KEY = "Session Action"

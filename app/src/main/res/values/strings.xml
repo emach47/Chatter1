@@ -5,7 +5,7 @@
     <string name="nickname_confirm">Press OK or change your Nickname</string>
     <string name="nickname_line2">(Max 12 characters with alphabets and numbers))</string>
     <string name="menu_edit_nickname">Change Nickname</string>
-    <string name="menu_end_chatter">End Chatter</string>
+    <string name="menu_end_chatter">End session</string>
     <string name="text_session_host">Host</string>
     <string name="button_text_start">Start</string>
     <string name="button_text_join">Join</string>
@@ -15,4 +15,5 @@
     <string name="text_header_session_members">Members</string>
     <string name="text_header_host_name">Host</string>
     <string name="button_text_send">Send</string>
+    <string name="button_text_quit">Quit</string>
 </resources>
