@@ -73,7 +73,7 @@ class NetViewModel : ViewModel() {
     val netData = MutableLiveData<String>()
     //..... HTTP return data
     val httpResponse = MutableLiveData<String>()
-    val httpResponse2 = MutableLiveData<String>()
+    val httpResponseRemoveHost = MutableLiveData<String>()
 
 //    //..... Socket connect and disconnect
 //    val socketStatusCode = MutableLiveData<String>()
@@ -167,7 +167,7 @@ class NetViewModel : ViewModel() {
 //                    //..... Perform the Socket closed process
 //                    socketStatusCode.value = sConnect
                     //..... Show closed socket
-                    closeSocket (m_socket)
+                    //closeSocket (m_socket)
 
                 }
             }
@@ -418,6 +418,12 @@ class NetViewModel : ViewModel() {
         postURL(context, sUrl)
     }
 
+    fun httpRemoveGuest (context: AppCompatActivity, sGameID: String, sHostName: String, sGuestName: String) {
+
+        val sUrl = constructUrlRemoveGuest(sGameID, sHostName, sGuestName)
+        postURL(context, sUrl)
+    }
+
     fun constructUrlRemoveGuest(sGameID: String, sHostName: String, sGuestName : String): String {
 
         //..... Build the following URL
@@ -455,7 +461,7 @@ class NetViewModel : ViewModel() {
 
         viewModelScope.launch {
             val sResponse = httpPostURL2(sURL)
-            httpResponse2.value = sResponse
+            httpResponseRemoveHost.value = sResponse
         }
     }
 
@@ -1039,12 +1045,15 @@ class NetViewModel : ViewModel() {
 
     fun shutdownHost(context: AppCompatActivity, sGameID: String, sHostName: String) {
 
-        //removeHost (context, sGameID, sHostName)
-        removeHost2 (context, sGameID, sHostName)
+        //..... removeHost2() is now done as the last step because it will start getSession
+        //removeHost2 (context, sGameID, sHostName)
         //..... Close all Client sockets if still opened
         closeAllGuestSockets()
         //..... Close ServerSocket
         m_serverSocket.close()
+        //..... Do removeHost2 (), which will start netViewModel.httpGetSessionData(this, m_sGameID)
+        //      in netViewModel.httpResponseRemoveHost.observe(this, { ... }) in MainActivity
+        removeHost2 (context, sGameID, sHostName)
     }
 
     //fun shutdownConnectionToHost(context: AppCompatActivity, sGameID: String, sGuestName: String) {

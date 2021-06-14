@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.preference.PreferenceManager
+import java.lang.Thread.sleep
 
 const val NICKNAME_KEY = "Nickname"
 //!!!!! 2021/03/28: TODO: Nickname policy has a potential problem.
@@ -89,13 +90,15 @@ class MainActivity : AppCompatActivity() {
 
         netViewModel.httpResponse.observe(this, {
             val sHttpBuffer = it
+            //..... Save sHttpBuffer in m_sHttpBuffer
+            m_sHttpBuffer = sHttpBuffer
             //..... Start Session Activity
             startSessionActivity(sHttpBuffer)
         })
 
-        netViewModel.httpResponse2.observe(this, {
+        netViewModel.httpResponseRemoveHost.observe(this, {
             val sHttpBuffer = it
-            var sMessage: String = "remHost "
+            var sMessage = "remHost "
             val sOK = sHttpBuffer.substring(0,2)
             if (sOK == "OK") {
                 sMessage = sMessage + "worked"
@@ -103,7 +106,8 @@ class MainActivity : AppCompatActivity() {
                 sMessage = sMessage + "FAILED *********"
             }
             Toast.makeText(this, sMessage, Toast.LENGTH_SHORT).show()
-//Toast
+
+            netViewModel.httpGetSessionData(this, m_sGameID)
         })
 //
 //        netViewModel.socketStatusCode.observe(this, {
@@ -341,14 +345,12 @@ class MainActivity : AppCompatActivity() {
                 else //..... SOCKET_MODE_GUEST assumed
                 {
                     netViewModel.shutdownConnectionToHost (m_sNickname)
-                    //..... Because the socket write function is done in background, sleep() is not effective.
-                    //..... Give 2 seconds for the user to see the notification before quitting
-                    //sleep(2000)
-                    //finish()
+                    //..... Wait 1 sec to give Host time to remove Guest
+                    sleep (1000)
+                    //..... Start SessionActivity
+                    netViewModel.httpGetSessionData(this, m_sGameID)
                 }
 
-                //..... Start SessionActivity
-                netViewModel.httpGetSessionData(this, m_sGameID)
                 //..... 2021/06/13: startSessionActivity() is called from netViewModel.httpResponse.observe
                 //startSessionActivity()
 
