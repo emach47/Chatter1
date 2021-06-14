@@ -14,7 +14,7 @@ import androidx.preference.PreferenceManager
 import java.lang.Thread.sleep
 
 const val NICKNAME_KEY = "Nickname"
-//!!!!! 2021/03/28: TODO: Nickname policy has a potential problem.
+//!!!!! 2021/03/28: NOTE: Nickname policy has a potential problem.
 //      The User can change Nickname any time by selecting the Change Nickname menu option.
 //      However, this app assumes that Nickname is confirmed or changed at the start of the app.
 //      Is it OK to change the Nickname anytime, even if during the Chatter session?
@@ -31,6 +31,22 @@ const val HTTP_REQUEST_REMOVE_GUEST           = 5
 const val SOCKET_MODE_GUEST           = 0
 const val SOCKET_MODE_HOST            = 1
 
+
+/*********************************************************************************************
+ * V1.01    2021/06/14
+ *      This is the first version of workable Chatter1.
+ *      Chatter1 provides a chat service using socket connection.
+ *      Any one can become a Host of chat session or join a chat session hosted by a Host
+ *      The management of multiple chat sessions is done through machida.com bulletin board.
+ *
+ *      Complex Program Process Sequence
+ *      This first version has a complex process sequence in order to "synchronize" HTTP data
+ *      exchange. I wanted to have a "synchronous" HTTP operation but Android requires a background
+ *      process to access HTTP. My attempts to use Volley and Coroutines are not successful
+ *      because of my lack of understanding of these techniques. The final result was a complex
+ *      process sequence that is difficult to follow. It is my hope that this will be resolved
+ *      in the future upgrades.
+*********************************************************************************************/
 class MainActivity : AppCompatActivity() {
 
     var m_iSocketMode = SOCKET_MODE_GUEST
@@ -45,34 +61,12 @@ class MainActivity : AppCompatActivity() {
     //  Properties for NetLogin
     //=============================================================================================
     //..... returned HTTP Buffer
-    //lateinit var m_sHttpBuffer : String
-    //var m_iHttpRequestCode = HTTP_REQUEST_SESSION_INFORMARION
-
     var m_sHttpBuffer = ""
 
     lateinit var netViewModel : NetViewModel
 
     lateinit var m_textMessageIn: TextView
     lateinit var m_editMessageOut: EditText
-//
-//    /////////////////////////////////////////////////////////////////////////////////////////
-//    //      Handler to recognize a message from background thread
-//    //      2021/05/21 Copied from ServerK1 and modified
-//    /////////////////////////////////////////////////////////////////////////////////////////
-//    private val handler = object : Handler(Looper.getMainLooper()) {
-//        override fun handleMessage(msg: Message) {
-//            val bundle = msg.data
-//            val message = bundle?.getString(MESSAGE_KEY)
-//            //..... Add message to the last line
-//            var sText = ""
-//            //= m_textMessages.text.toString()
-//            //..... 2021/03/06: the following CR (\n) does not work
-//            sText = sText + "\n" + message
-//            //m_textMessages.text = sText
-//            //m_textMessages.setText(sText)
-//        }
-//    }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,57 +103,6 @@ class MainActivity : AppCompatActivity() {
 
             netViewModel.httpGetSessionData(this, m_sGameID)
         })
-//
-//        netViewModel.socketStatusCode.observe(this, {
-//            val sCode = it
-//            //.... If Connect
-//            if (sCode == SOCKET_CONNECTED) {
-//                //..... Change the Connect Button
-//                //
-//                //..... Make the SEND button visible
-//                //enableButtonSend (true)
-//                //..... For debugging, show the message behind the IP address after disconnection
-//                //m_editIP.setText ("")
-//            }
-//            //.... If socket is closed
-//            if (sCode == SOCKET_CLOSED) {
-//                //..... 2021/03/18: Connection lost message is now handled in vieModel.readMessage
-//                //      in order to centralize all the messages shown in netData
-//                //var sData : String = m_textMessages.text.toString()
-//                //sData = sData + "*** Connection lost ***\n"
-//                //m_textMessages.setText (sData)
-//                //m_textMessages.text = sData
-//
-//                //xxxxx 2021/03/18: Making sendButton invisible causes all the messages to disappear
-//                //                  ans the Hint for the send text to appear at the top.
-//                //                  This may be due to the Relative Layout.
-//                //                  If so, may have to change to Constraint Layout.
-//                //enableButtonSend (false)
-//                //.... If socket is closed
-//            }
-//            if (sCode == SOCKET_LOST) {
-//                //..... 2021/03/18: Connection lost message is now handled in vieModel.readMessage
-//                //      in order to centralize all the messages shown in netData
-//                //var sData : String = m_textMessages.text.toString()
-//                //sData = sData + "*** Connection lost ***\n"
-//                //m_textMessages.setText (sData)
-//                //m_textMessages.text = sData
-//
-//                //xxxxx 2021/03/18: Making sendButton invisible causes all the messages to disappear
-//                //                  ans the Hint for the send text to appear at the top.
-//                //                  This may be due to the Relative Layout.
-//                //                  If so, may have to change to Constraint Layout.
-//                //enableButtonSend (false)
-//            }
-//
-//        })
-
-        //..... Get HTTP Session data first before starting NicknameActivity
-        //..... Note: 2021/06/12 The following statement is now deleted.
-        //      HTTP session data is now obtained immediately before starting SessionActivity.
-        //      To obtain the HTTP session data, the Coroutine/ViewModel approach is used to ensure
-        //      that the latest data is used.
-        //netViewModel.httpGetSessionData(m_sGameID)
 
         //..... Start NicknameActivity to get or confirm the Nickname
         //      And to give time for buildSessionTable
@@ -336,22 +279,18 @@ class MainActivity : AppCompatActivity() {
 //                    }
                     // else {
                         netViewModel.shutdownHost(this, m_sGameID, m_sNickname)
-                        //..... Because the HTTP function is done in background, sleep() is not effective.
-                        //..... Wait 1 seconds to let the HTTP operation complete
-                        //sleep(1000)
-                        //finish()
                     //}
                 }
                 else //..... SOCKET_MODE_GUEST assumed
                 {
                     netViewModel.shutdownConnectionToHost (m_sNickname)
-                    //..... Wait 1 sec to give Host time to remove Guest
+                    //..... Wait 1 sec to give Host the time to remove this Guest
                     sleep (1000)
                     //..... Start SessionActivity
                     netViewModel.httpGetSessionData(this, m_sGameID)
                 }
 
-                //..... 2021/06/13: startSessionActivity() is called from netViewModel.httpResponse.observe
+                //..... 2021/06/13: startSessionActivity() is now called from netViewModel.httpResponse.observe
                 //startSessionActivity()
 
             }
@@ -413,13 +352,5 @@ class MainActivity : AppCompatActivity() {
         m_editMessageOut.setText ("")
 
     }
-//
-//    override fun onStop() {
-//        super.onStop()
-//
-//        if (m_iSocketMode == SOCKET_MODE_HOST) {
-//            netViewModel.removeHost(this, m_sGameID, m_sNickname)
-//        }
-//    }
 
 }
