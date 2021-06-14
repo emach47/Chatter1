@@ -8,24 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 
 class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : RecyclerView.Adapter<SessionViewHolder>() {
 
-    //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-    //xxxxx I get a warning message: sessionRecords never referenced.
-    //xxxxx Resolve this warning message before committing
-    //xxxxx Investigate the difference between sessionTable and sessionRecord
-    //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-    //..... Link to NetViewModel
-    //val netViewModel : NetViewModel by netViewModel()
-    var netViewModel = NetViewModel()
-    //val netViewModel = ViewModelProvider(this).get(NetViewModel::class.java)
-
-    //..... Link to SessionActivity
-    //val sessionActivity = SessionActivity()
-
-    //var m_sessionTable = MutableList(10) {SessionRecord()}
-    var m_iSessions = 0
     var m_sessionTable = sessionRecords
-    var m_iTotalSessions = 0
 
     /**
      * Called when RecyclerView needs a new [ViewHolder] of the given type to represent
@@ -51,27 +34,10 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
      * @see .onBindViewHolder
      */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SessionViewHolder {
+
         //..... Link session_one.xml to SessionViewHolder
         val view = LayoutInflater.from(parent.context).inflate (R.layout.session_one, parent, false)
         val sessionViewholder = SessionViewHolder (view)
-
-        //netViewModel = ViewModelProvider.of(NetViewModel)
-
-        //var iSessions = netViewModel.getSussionCount()
-
-        //..... 2021/04/19: The following data all contains zeroes\
-        //      sessionActivity.m_iSessions
-        //      netViewModel.m_iSessions
-        //      However, m_ssesionTable[] contains valid data
-        //      So, if I can find out how to pass m_iSessions from SessionActivity,
-        //      I may be able to do what I want to do without using Realm.
-        //val sessionActivity = SessionActivity()
-        //val iSessions = sessionActivity.m_iSessions
-        m_iSessions = netViewModel.m_iSessions
-        m_iSessions = 2
-        //m_iSessions = NetViewModel.m_iSessions
-        //m_sessionTable = netViewModel.m_sessionTable
-
 
         return sessionViewholder
     }
@@ -102,13 +68,10 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
 
         val sessionRecord = m_sessionTable[position]
 
-        //val iSessions = netViewModel.m_iSessions
-        val iSessions = m_iSessions
+        val iSessionTableSize = m_sessionTable.size
         //..... Create the view depending on iSessions and position
-        if (position <= iSessions)
+        if (position < iSessionTableSize)
         {
-            //..... This session is in progress and we have the data
-            //holder.textSessionGroup?.text  = sessionRecord.sessionGroupId.toString()
             holder.textSessionGroup?.text  = (position + 1).toString()
             holder.textSessionMembers?.text = sessionRecord.sessionMembers.toString()
             holder.textSessionHostName?.text = sessionRecord.sessionHostName
@@ -143,6 +106,7 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
             }
             else {
                 holder.buttonSessionAction?.setText(R.string.button_text_full)
+                holder.buttonSessionAction?.setBackgroundColor(Color.RED)
             }
 
         }
@@ -159,13 +123,8 @@ class SessionRecyclerViewAdapter (sessionRecords: MutableList<SessionRecord>) : 
      * @return The total number of items in this adapter.
      */
     override fun getItemCount(): Int {
-        //..... Both result in zero
-        //      netViewModel.m_iSessions
-        //      m_iSessions
-        //val iSessions = netViewModel.m_iSessions + 1
-        //val iSessions = m_iSessions + 1
+
         val iSessions = m_sessionTable.size
-        m_iSessions = iSessions
         return iSessions
     }
 }

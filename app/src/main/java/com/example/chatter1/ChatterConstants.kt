@@ -8,11 +8,6 @@ const val HTTP_BUFFER = "HTTP Buffer"
 const val RETURN_DATA_SESSION_ACTION_KEY = "Session Action"
 const val MAX_SESSIONS = 20
 
-//..... MAX_MEMBERS reserved for physical space
-const val MAX_MEMBERS_SPACE  = 8
-//..... For RumNet, actually used
-const val MAX_MEMBERS  = 4
-
 //..... HTTP Buffer data location (zero-relative)
 //      Control Record
 const val BYTE_BEGIN_OK                 = 0

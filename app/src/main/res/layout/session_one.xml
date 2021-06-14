@@ -54,7 +54,7 @@
         android:id="@+id/textSessionGuestName3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="**Guestname2*"
+        android:text="**Guestname3*"
         app:layout_constraintStart_toStartOf="@+id/textSessionHostName"
         app:layout_constraintTop_toBottomOf="@+id/textSessionGuestName2" />
 

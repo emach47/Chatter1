@@ -15,21 +15,12 @@ class SessionActivity : AppCompatActivity() {
     //var m_sChatterID = "Chater"
     var m_sChatterID = "RumNet"
 
-    //var netViewModel = NetViewModel()
     lateinit var netViewModel : NetViewModel
-    //private lateinit var realm: Realm
 
     //..... Result of unformatting m_sHttpBuffer
     var m_sHttpBuffer = ""
     var m_iError = 0
     var m_iSessions = 0                 //Current number of sessions in progress
-    var m_iIpAddressClient = IntArray(4)
-    var m_iPlayers = Array(MAX_SESSIONS, { IntArray(MAX_MEMBERS) })
-    //Number of participants for each session
-    //var m_sPlayerName = Array<Array<String?>>(MAX_SESSIONS) { arrayOfNulls(MAX_MEMBERS) }
-    var m_sPlayerName = Array(MAX_SESSIONS) {Array(MAX_MEMBERS){""} }
-    //Participant names
-    var m_iHostIpAddress = Array(MAX_SESSIONS, { IntArray(4) })
 
     //var m_sessionTable = MutableList(MAX_SESSIONS) {SessionRecord()}
     var m_sessionTable : MutableList<SessionRecord> = mutableListOf<SessionRecord>()
@@ -109,6 +100,11 @@ class SessionActivity : AppCompatActivity() {
 
         //..... Find which action type
         val sButtonText = view.buttonSessionAction.text
+
+        //..... Do nothing if Full
+        val sFull = getString(R.string.button_text_full)
+        if (sButtonText == sFull )
+            return
 
         val intent = Intent()
         intent.putExtra (RETURN_DATA_SESSION_ACTION_KEY, sButtonText)

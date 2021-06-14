@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.*
+import java.lang.Thread.sleep
 import java.net.InetAddress
 import java.net.NetworkInterface.*
 import java.net.ServerSocket
@@ -47,10 +48,18 @@ const val SOCKET_CLOSED = "Closed"
 const val SOCKET_CONNECTED = "Connected"
 const val SOCKET_LOST = "Lost"
 
-//..... MAX_GUESTS is one less than MAX_MEMBERS excluding the Host
+//..... MAX_MEMBERS reserved for physical space
+//..... For Testing a case of full session
+
+const val MAX_MEMBERS_SPACE  = 8
+//..... WARNING: If you change MAX_MEMBERS or MAX_GUESTS, init{} in SessionViewHolder class must be also changed.
+//               Otherwise, the app will result in Runtime Error during RecyclerView trying to access
+//               textSessionGuestName[0], [1] & [2].
+//               These statement(s) must also be changed.
+const val MAX_MEMBERS  = 4
+//..... MAX_GUESTS must be one less than MAX_MEMBERS excluding the Host
+//const val MAX_GUESTS = 2
 const val MAX_GUESTS = MAX_MEMBERS - 1
-//..... For Testing Guest Full
-//const val MAX_GUESTS = 1
 
 const val GUEST_NAME_EMPTY = "empty"
 const val GUEST_NAME_OK = 777
@@ -346,9 +355,13 @@ class NetViewModel : ViewModel() {
         sessionRecord.sessionHostName = sSessionRecord.substring(BYTE_BEGIN_SESSION_HOST_NAME, BYTE_BEGIN_SESSION_GUEST_NAME)
         //..... Get the Guest Names if any
         if (iMembers > 1) {
+            var iGuests =  iMembers - 1
+            if (iGuests > MAX_GUESTS) {
+                iGuests = MAX_GUESTS
+            }
             var i = 0
             var iStart = BYTE_BEGIN_SESSION_GUEST_NAME
-            while (i < iMembers) {
+            while (i < iGuests) {
                 sessionRecord.sessionGuestName[i] = sSessionRecord.substring(iStart, iStart + NICKNAME_MAX_SIZE)
                 i++
                 iStart = iStart + NICKNAME_MAX_SIZE
@@ -682,7 +695,7 @@ class NetViewModel : ViewModel() {
     }
 
     //==================================================================================================================
-    //      Socket operations (Server)
+    //      Socket operations (Host)
     //==================================================================================================================
 
     //fun startServerThread(iSessionID: Int, sHostName : String) {
@@ -715,6 +728,8 @@ class NetViewModel : ViewModel() {
                     //      but also creates input & output objects for this Guest
                     iGuest = addGuestSocket(guestSocket)
                     if (iGuest < 0) {
+                        //----- This test is no longer necessary because the Button is disabled when is is "Full"
+                        //      that is, when the number of Guests reaches MAX_GUESTS, but I leave it anyway.
                         //..... Do not accept this socket; m_guestSockets[] are full
                         iError = -1
                         sError = "Err001: Too many guests; " + m_sGuestIpAddress[iGuest] + " NOT Accepted\n"
@@ -827,7 +842,7 @@ class NetViewModel : ViewModel() {
             return iResult
         }
         for (iGuest in 0 until MAX_GUESTS) {
-            if (!m_bOKToReadGuestSocket[m_iGuestSockets]) {
+            if (!m_bOKToReadGuestSocket[iGuest]) {
                 iResult = iGuest
                 return iResult
             }
@@ -850,6 +865,8 @@ class NetViewModel : ViewModel() {
             return iResult
         }
 
+        //..... Wait 1 second before closing the socket so the recipient has the time to receive the message
+        sleep (1000)
         closeGuestSocket (iGuest)
 
         m_iGuestSockets -= 1
@@ -926,7 +943,6 @@ class NetViewModel : ViewModel() {
 
         thread(start = true) {
             if (input != null) {
-                //val bundle = Bundle()
                 while (m_bOKToReadGuestSocket[iGuest]) {
                     try {
                         sMessage = input.readLine()
@@ -942,6 +958,10 @@ class NetViewModel : ViewModel() {
                                 }
                                 else {
                                     rejectDuplicateGuestName (sGuestName, iGuest)
+                                    //..... It is not necessary to do HTTP removeGuest()
+                                    //      since this guest has not been added via addGuest().
+                                    removeGuestSocket(iGuest)
+                                    break
                                 }
                             }
                         }
@@ -970,7 +990,7 @@ class NetViewModel : ViewModel() {
                     } catch (e: Exception) {
                         //..... Is this exception the result of the DISCONNECT Button?
                         if (m_bOKToReadGuestSocket[iGuest]) {
-                            //..... No, the connection to the server is lost
+                            //..... No, the connection to the Guest is lost
                             sMessage = SOCKET_LOST + " to " + m_sGuestName[iGuest]
                             putBundleString(SOCKET_STATUS_KEY, sMessage)
                             closeSocket(sGuest)
@@ -1005,13 +1025,13 @@ class NetViewModel : ViewModel() {
     //  (3) Notify this event to the UI activity
     //  (4) Do not issue another input.readLine() on this socket
     //      That is, set m_bOKToREadGuestSocket[iGuest] = false
+    //      (This is done in removeGuestSocket(iGuest) upon return from this function.)
     ///////////////////////////////////////////////////////////////////////////////////////////
     fun rejectDuplicateGuestName (sName: String, iGuest : Int) {
 
-        var sMessage = "*** " + sName + " is already used; Connection declied ***"
+        var sMessage = "*** " + sName + " is already signed on.\nConnection declined ***"
         sendGuestMessage (iGuest, sMessage)
         passMessageToMainThread(sMessage)
-        removeGuestSocket(iGuest)
         sMessage = "=== Socket to " + m_sGuestIpAddress[iGuest] + " closed ==="
         passMessageToMainThread(sMessage)
     }
